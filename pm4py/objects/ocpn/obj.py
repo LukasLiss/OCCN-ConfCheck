@@ -278,6 +278,43 @@ class OCPetriNet(object):
             memodict[id(a)] = a_copy
         return new_net
 
+    def __repr__(self):
+        ret = ["object_types: ["]
+        object_types_rep = []
+        for ot in self.object_types:
+            object_types_rep.append(ot)
+        object_types_rep.sort()
+        ret.append(" " + ", ".join(object_types_rep) + " ")
+        ret.append("]\nplaces: [")
+        places_rep = []
+        for place in self.places:
+            places_rep.append(repr(place))
+        places_rep.sort()
+        ret.append(" " + ", ".join(places_rep) + " ")
+        ret.append("]\ntransitions: [")
+        trans_rep = []
+        for trans in self.transitions:
+            trans_rep.append(repr(trans))
+        trans_rep.sort()
+        ret.append(" " + ", ".join(trans_rep) + " ")
+        ret.append("]\narcs: [")
+        arcs_rep = []
+        for arc in self.arcs:
+            arcs_rep.append(repr(arc))
+        arcs_rep.sort()
+        ret.append(" " + ", ".join(arcs_rep) + " ")
+        ret.append("]\ninitial_marking: [")
+        initial_marking_rep = [repr(self.initial_marking)]
+        ret.append(" " + ", ".join(initial_marking_rep) + " ")
+        ret.append("]\nfinal_marking: [")
+        final_marking_rep = [repr(self.final_marking)]
+        ret.append(" " + ", ".join(final_marking_rep) + " ")
+        ret.append("]")
+        return "".join(ret)
+    
+    def __str__(self):
+        return self.__repr__()
+
     initial_marking = property(__get_initial_marking)
     final_marking = property(__get_final_marking)
 
