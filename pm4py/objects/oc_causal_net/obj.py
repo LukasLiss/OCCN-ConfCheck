@@ -106,7 +106,7 @@ class OCCausalNet(object):
         """
 
         def __init__(
-            self, obligations: List["OCCausalNet.Obligation"], support_count: int = 0
+            self, obligations: List["OCCausalNet.Obligation"], support_count: int = float('inf')
         ):
             """
             Constructor
@@ -117,7 +117,7 @@ class OCCausalNet(object):
                 List of obligations that comprise the set
             support_count : int
                 Frequency of this obligation set in the event log. May be used to filter infrequent obligation sets.
-                Default is 0.
+                Default is inf.
             """
             self.__obligations = obligations
             self.__support_count = support_count
@@ -151,7 +151,8 @@ class OCCausalNet(object):
         Parameters
         ----------
         dependency_graph : nx.MultiDiGraph
-            Object-centric dependency graph
+            Object-centric dependency graph 
+            TODO elaborate on DG format
         output_bindings : Dict[str, List[OCCausalNet.ObligationSet]]
             Output binding sets of the activities
         input_bindings : Dict[str, List[OCCausalNet.ObligationSet]]
@@ -173,7 +174,7 @@ class OCCausalNet(object):
             (
                 activity_count
                 if activity_count is not None
-                else {act: 0 for act in self.activities}
+                else {act: 1 for act in self.activities}
             ),
         )
         self.__object_types = {
@@ -187,8 +188,10 @@ class OCCausalNet(object):
     def __repr__(self):
         ret = f"Dependency graph: {self.dependency_graph}\n"
         for act in self.activities:
-            ret += f"Input bindings[{act}]: {self.input_bindings[act]}\n"
-            ret += f"Output bindings[{act}]: {self.output_bindings[act]}\n"
+            if act in self.input_bindings:
+                ret += f"Input bindings[{act}]: {self.input_bindings[act]}\n"
+            if act in self.output_bindings:
+                ret += f"Output bindings[{act}]: {self.output_bindings[act]}\n"
         return ret
 
     def __str__(self):
