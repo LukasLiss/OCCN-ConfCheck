@@ -86,7 +86,7 @@ class OCMarking(Counter):
         return new_marking
 
 
-class OCPetriNet(object):
+class OCPetriNet(PetriNet):
     class Place(PetriNet.Place):
         def __init__(
             self, name, object_type, in_arcs=None, out_arcs=None, properties=None
@@ -111,6 +111,33 @@ class OCPetriNet(object):
                 name, in_arcs=in_arcs, out_arcs=out_arcs, properties=properties
             )
             self.__object_type = object_type
+            
+        
+        def add_in_arc(self, arc):
+            """
+            Adds an incoming arc to the place.
+
+            Parameters
+            ------------
+            arc: OCPetriNet.Arc
+                the arc to add
+            """
+            self.__in_arcs.add(arc)
+            assert arc.target == self
+            assert arc.object_type == self.object_type
+        
+        def add_out_arc(self, arc):
+            """
+            Adds an outgoing arc to the place.
+
+            Parameters
+            ------------
+            arc: OCPetriNet.Arc
+                the arc to add
+            """
+            self.__out_arcs.add(arc)
+            assert arc.source == self
+            assert arc.object_type == self.object_type
 
         def __get_object_type(self):
             return self.__object_type
@@ -138,8 +165,29 @@ class OCPetriNet(object):
         object_type = property(__get_object_type)
 
     class Transition(PetriNet.Transition):
-        # Standard PetriNet.Transition
-        pass
+        def add_in_arc(self, arc):
+            """
+            Adds an incoming arc to the place.
+
+            Parameters
+            ------------
+            arc: OCPetriNet.Arc
+                the arc to add
+            """
+            self.__in_arcs.add(arc)
+            assert arc.target == self
+        
+        def add_out_arc(self, arc):
+            """
+            Adds an outgoing arc to the place.
+
+            Parameters
+            ------------
+            arc: OCPetriNet.Arc
+                the arc to add
+            """
+            self.__out_arcs.add(arc)
+            assert arc.source == self
 
     class Arc(PetriNet.Arc):
         def __init__(
@@ -279,7 +327,7 @@ class OCPetriNet(object):
         return new_net
 
     def __repr__(self):
-        ret = ["object_types: ["]
+        ret = [f"OCPN {self.name}:\nobject_types: ["]
         object_types_rep = []
         for ot in self.object_types:
             object_types_rep.append(ot)
