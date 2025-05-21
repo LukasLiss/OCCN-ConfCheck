@@ -21,17 +21,17 @@ Contact: info@processintelligence.solutions
 """
 
 
-def filter4(input_bindings, output_bindings, threshold, activity_count):
+def filter4(input_marker_groups, output_marker_groups, threshold, activity_count):
     """
-    Filters input_bindings and output_bindings by relative support, then
-    recursively keeps only those ObligationSets that remain connected.
+    Filters input_marker_groups and output_marker_groups by relative support, then
+    recursively keeps only those MarkerGroups that remain connected.
 
     Parameters
     ----------
-    input_bindings : Dict[str, List[OCCausalNet.ObligationSet]]
-        Input binding sets of the activities
-    output_bindings : Dict[str, List[OCCausalNet.ObligationSet]]
-        Output binding sets of the activities
+    input_marker_groups : Dict[str, List[OCCausalNet.MarkerGroup]]
+        Input marker groups of the activities
+    output_marker_groups : Dict[str, List[OCCausalNet.MarkerGroup]]
+        Output marker groups of the activities
     threshold : float
         Minimum relative support = support_count / activity_count[activity]
     activity_count : Dict[str,int]
@@ -40,145 +40,145 @@ def filter4(input_bindings, output_bindings, threshold, activity_count):
     Returns
     -------
     Tuple[
-        Dict[str, List[OCCausalNet.ObligationSet]],
-        Dict[str, List[OCCausalNet.ObligationSet]]
+        Dict[str, List[OCCausalNet.MarkerGroup]],
+        Dict[str, List[OCCausalNet.MarkerGroup]]
     ]
-        (filtered_input_bindings, filtered_output_bindings)
+        (filtered_input_marker_groups, filtered_output_marker_groups)
     """
 
-    def filterByTreshold(binding_list, activity):
+    def filterByTreshold(marker_groups, activity):
         """
-        Filters a list of ObligationSets by relative support.
+        Filters a list of MarkerGroups by relative support.
 
         Parameters
         ----------
-        binding_list : List[OCCausalNet.ObligationSet]
-            The obligation sets to filter.
+        marker_groups : List[OCCausalNet.MarkerGroup]
+            The MarkerGroups to filter.
         activity : str
             Activity name whose frequency is used for relative support.
 
         Returns
         -------
-        List[OCCausalNet.ObligationSet]
-            Those sets whose support_count / activity_count[activity] > threshold.
+        List[OCCausalNet.MarkerGroup]
+            Those groups whose support_count / activity_count[activity] > threshold.
         """
-        filteredBindings = [
-            obl_set
-            for obl_set in binding_list
-            if obl_set.support_count / activity_count[activity] > threshold
+        filteredMarkerGroups = [
+            marker_group
+            for marker_group in marker_groups
+            if marker_group.support_count / activity_count[activity] > threshold
         ]
-        return filteredBindings
+        return filteredMarkerGroups
 
-    def getMostFrequent(binding_list):
+    def getMostFrequent(marker_groups):
         """
-        Returns the most frequent ObligationSet in the list.
+        Returns the most frequent MarkerGroup in the list.
 
         Parameters
         ----------
-        binding_list : List[OCCausalNet.ObligationSet]
-            List of obligation sets to examine.
+        marker_groups : List[OCCausalNet.MarkerGroup]
+            List of marker groups to examine.
 
         Returns
         -------
-        OCCausalNet.ObligationSet
+        OCCausalNet.MarkerGroup
             The one with the highest support_count.
         """
-        mostFrequentBinding = binding_list[
-            [obl_set.support_count for obl_set in binding_list].index(
-                max([obl_set.support_count for obl_set in binding_list])
+        most_frequent_marker_group = marker_groups[
+            [marker_group.support_count for marker_group in marker_groups].index(
+                max([marker_group.support_count for marker_group in marker_groups])
             )
         ]
-        return mostFrequentBinding
+        return most_frequent_marker_group
 
-    def getSubsequentInputBidnings(mostFrequentBinding, activity):
+    def getSubsequentInputMarkerGroups(most_frequent_marker_group, activity):
         """
-        For every obligation in *mostFrequentBinding* (which belongs to an
-        **output** binding of *activity*) look up the corresponding input
-        bindings of the obligation's successor activity.
+        For every marker in *most_frequent_marker_group* (which belongs to an
+        **output** marker group of *activity*) look up the corresponding input
+        marker groups of the marker's successor activity.
         Keeps only the most frequent ones and adds them to the
-        *filtered_input_bindings* structure.
+        *filtered_input_marker_groups* structure.
 
         Parameters
         ----------
-        mostFrequentBinding : OCCausalNet.ObligationSet
+        most_frequent_marker_group : OCCausalNet.MarkerGroup
         activity : str
         """
-        for obligation in mostFrequentBinding.obligations:
-            succ_activity = obligation.related_activity
-            if succ_activity in input_bindings.keys():
-                possibleInputBindings = [
+        for marker in most_frequent_marker_group.markers:
+            succ_activity = marker.related_activity
+            if succ_activity in input_marker_groups.keys():
+                possible_input_marker_groups = [
                     x
-                    for x in input_bindings[succ_activity]
-                    if (activity, obligation.object_type)
-                    in [(y.related_activity, y.object_type) for y in x.obligations]
+                    for x in input_marker_groups[succ_activity]
+                    if (activity, marker.object_type)
+                    in [(y.related_activity, y.object_type) for y in x.markers]
                 ]
-                mostFrequentBinding = getMostFrequent(possibleInputBindings)
-                addToFilteredInputBindings(mostFrequentBinding, succ_activity)
+                most_frequent_marker_group = getMostFrequent(possible_input_marker_groups)
+                addToFilteredInputMarkerGroups(most_frequent_marker_group, succ_activity)
 
-    def addToFilteredOutputBindings(mostFrequentBinding, activity):
+    def addToFilteredOutputMarkerGroups(most_frequent_marker_group, activity):
         """
-        Inserts *mostFrequentBinding* into *filtered_output_bindings* and
+        Inserts *most_frequent_marker_group* into *filtered_output_marker_groups* and
         triggers the recursive traversal to the input side.
 
         Parameters
         ----------
-        mostFrequentBinding : OCCausalNet.ObligationSet
+        most_frequent_marker_group : OCCausalNet.MarkerGroup
         activity : str
         """
-        if mostFrequentBinding not in filtered_output_bindings[activity]:
-            filtered_output_bindings[activity].append(mostFrequentBinding)
-            getSubsequentInputBidnings(mostFrequentBinding, activity)
+        if most_frequent_marker_group not in filtered_output_marker_groups[activity]:
+            filtered_output_marker_groups[activity].append(most_frequent_marker_group)
+            getSubsequentInputMarkerGroups(most_frequent_marker_group, activity)
 
-    def getSubsequentOutputBidnings(mostFrequentBinding, activity):
+    def getSubsequentOutputMarkerGroups(most_frequent_marker_group, activity):
         """
-        For every obligation in *mostFrequentBinding* (which belongs to an
-        **input** binding of *activity*) look up the corresponding output
-        bindings of the obligation's predecessor activity.
+        For every marker in *most_frequent_marker_group* (which belongs to an
+        **input** marker_group of *activity*) look up the corresponding output
+        marker groups of the marker's predecessor activity.
         Keeps only the most frequent ones and adds them to the
-        *filtered_output_bindings* structure.
+        *filtered_output_marker_groups* structure.
 
         Parameters
         ----------
-        mostFrequentBinding : OCCausalNet.ObligationSet
+        most_frequent_marker_group : OCCausalNet.MarkerGroup
         activity : str
         """
-        for obligation in mostFrequentBinding.obligations:
-            pred_activity = obligation.related_activity
-            if pred_activity in output_bindings.keys():
-                possibleOutputBindings = [
+        for marker in most_frequent_marker_group.markers:
+            pred_activity = marker.related_activity
+            if pred_activity in output_marker_groups.keys():
+                possible_output_marker_groups = [
                     x
-                    for x in output_bindings[pred_activity]
-                    if (activity, obligation.object_type)
-                    in [(y.related_activity, y.object_type) for y in x.obligations]
+                    for x in output_marker_groups[pred_activity]
+                    if (activity, marker.object_type)
+                    in [(y.related_activity, y.object_type) for y in x.markers]
                 ]
-                mostFrequentBinding = getMostFrequent(possibleOutputBindings)
-                addToFilteredOutputBindings(mostFrequentBinding, pred_activity)
+                most_frequent_marker_group = getMostFrequent(possible_output_marker_groups)
+                addToFilteredOutputMarkerGroups(most_frequent_marker_group, pred_activity)
 
-    def addToFilteredInputBindings(mostFrequentBinding, activity):
+    def addToFilteredInputMarkerGroups(most_frequent_marker_group, activity):
         """
-        Inserts *mostFrequentBinding* into *filtered_input_bindings* and
+        Inserts *most_frequent_marker_group* into *filtered_input_marker_groups* and
         triggers the recursive traversal to the output side.
 
         Parameters
         ----------
-        mostFrequentBinding : OCCausalNet.ObligationSet
+        most_frequent_marker_group : OCCausalNet.MarkerGroup
         activity : str
         """
-        if mostFrequentBinding not in filtered_input_bindings[activity]:
-            filtered_input_bindings[activity].append(mostFrequentBinding)
-            getSubsequentOutputBidnings(mostFrequentBinding, activity)
+        if most_frequent_marker_group not in filtered_input_marker_groups[activity]:
+            filtered_input_marker_groups[activity].append(most_frequent_marker_group)
+            getSubsequentOutputMarkerGroups(most_frequent_marker_group, activity)
 
-    filtered_output_bindings = {act: [] for act in output_bindings.keys()}
-    filtered_input_bindings = {act: [] for act in input_bindings.keys()}
+    filtered_output_marker_groups = {act: [] for act in output_marker_groups.keys()}
+    filtered_input_marker_groups = {act: [] for act in input_marker_groups.keys()}
 
-    for act in filtered_output_bindings.keys():
-        filteredBindings = filterByTreshold(output_bindings[act], act)
-        for binding in filteredBindings:
-            addToFilteredOutputBindings(binding, act)
+    for act in filtered_output_marker_groups.keys():
+        filteredMarkerGroups = filterByTreshold(output_marker_groups[act], act)
+        for marker_group in filteredMarkerGroups:
+            addToFilteredOutputMarkerGroups(marker_group, act)
 
-    for act in filtered_input_bindings.keys():
-        filteredBindings = filterByTreshold(input_bindings[act], act)
-        for binding in filteredBindings:
-            addToFilteredInputBindings(binding, act)
+    for act in filtered_input_marker_groups.keys():
+        filteredMarkerGroups = filterByTreshold(input_marker_groups[act], act)
+        for marker_group in filteredMarkerGroups:
+            addToFilteredInputMarkerGroups(marker_group, act)
 
-    return filtered_input_bindings, filtered_output_bindings
+    return filtered_input_marker_groups, filtered_output_marker_groups

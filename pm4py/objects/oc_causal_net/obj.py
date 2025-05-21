@@ -30,10 +30,9 @@ class OCCausalNet(object):
     Object-Centric Causal Net capturing dependency graph and token bindings.
     """
 
-    class Obligation(object):
+    class Marker(object):
         """
-        Represents an obligation that has to be fulfilled by an activity.
-        Also referred to as 'marker' in literature.
+        Represents a single marker in an object-centric causal net.
         """
 
         def __init__(
@@ -45,9 +44,9 @@ class OCCausalNet(object):
             Parameters
             ----------
             related_activity : str
-                Activity that has to fulfill the obligation (predecessor or successor)
+                Activity that has to fulfill the marker (predecessor or successor)
             object_type : str
-                Type of object that is bound to the obligation
+                object type of the marker
             count_range : Tuple
                 Min and max number of obligations consumable ('cardinalities')
             marker_key : int
@@ -83,7 +82,7 @@ class OCCausalNet(object):
             return self.__marker_key
 
         def __eq__(self, other):
-            if isinstance(other, OCCausalNet.Obligation):
+            if isinstance(other, OCCausalNet.Marker):
                 return (
                     self.related_activity == other.related_activity
                     and self.object_type == other.object_type
@@ -99,49 +98,52 @@ class OCCausalNet(object):
         max_count = property(__get_max_count)
         marker_key = property(__get_marker_key)
 
-    class ObligationSet(object):
+    class MarkerGroup(object):
         """
-        Represents a set of obligations.
-        Also referred to as 'marker group' in literature.
+        Represents a group of markers. A group of markers semantically
+        represents the AND gate of all markers in the group.
         """
 
         def __init__(
-            self, obligations: List["OCCausalNet.Obligation"], support_count: int = float('inf')
+            self,
+            markers: List["OCCausalNet.Marker"],
+            support_count: int = float("inf"),
         ):
             """
             Constructor
 
             Parameters
             ----------
-            obligations : List[OCCausalNet.Obligation]
-                List of obligations that comprise the set
+            markers : List[OCCausalNet.Marker]
+                List of markers that comprise the group
             support_count : int
-                Frequency of this obligation set in the event log. May be used to filter infrequent obligation sets.
+                Frequency of this marker group in the event log. May be used to 
+                filter infrequent obligation sets.
                 Default is inf.
             """
-            self.__obligations = obligations
+            self.__markers = markers
             self.__support_count = support_count
 
         def __repr__(self):
-            return f"({self.obligations}, count={self.support_count})"
+            return f"({self.markers}, count={self.support_count})"
 
         def __str__(self):
             return self.__repr__()
 
-        def __get_obligations(self):
-            return self.__obligations
+        def __get_markers(self):
+            return self.__markers
 
         def __get_support_count(self):
             return self.__support_count
 
-        obligations = property(__get_obligations)
+        markers = property(__get_markers)
         support_count = property(__get_support_count)
 
     def __init__(
         self,
         dependency_graph: nx.MultiDiGraph,
-        output_bindings: Dict[str, List["OCCausalNet.ObligationSet"]],
-        input_bindings: Dict[str, List["OCCausalNet.ObligationSet"]],
+        output_marker_groups: Dict[str, List["OCCausalNet.MarkerGroup"]],
+        input_marker_groups: Dict[str, List["OCCausalNet.MarkerGroup"]],
         activity_count: Dict[str, int] = None,
         relative_occurrence_threshold: float = 0,
     ):
@@ -151,25 +153,25 @@ class OCCausalNet(object):
         Parameters
         ----------
         dependency_graph : nx.MultiDiGraph
-            Object-centric dependency graph 
+            Object-centric dependency graph
             TODO elaborate on DG format
-        output_bindings : Dict[str, List[OCCausalNet.ObligationSet]]
-            Output binding sets of the activities
-        input_bindings : Dict[str, List[OCCausalNet.ObligationSet]]
-            Input binding sets of the activities
+        output_marker_groups : Dict[str, List[OCCausalNet.MarkerGroup]]
+            Output marker groups per activity
+        input_marker_groups : Dict[str, List[OCCausalNet.MarkerGroup]]
+            Input marker groups per activity
         activity_count : Dict[str, int]
-            Activity counts in the event log for filtering of infrequent obligation sets.
+            Activity counts in the event log for filtering of infrequent marker groups.
         relative_occurrence_threshold : float
-            Relative threshold for filtering infrequent obligation sets. Range is [0,1].
+            Relative threshold for filtering infrequent marker groups. Range is [0,1].
             Default is 0, meaning no filtering.
         """
         self.__dependency_graph = dependency_graph
         self.__activities = list(dependency_graph._node.keys())
         self.__edges = dependency_graph._succ
         self.__relative_occurrence_threshold = relative_occurrence_threshold
-        self.__input_bindings, self.__output_bindings = filter4(
-            input_bindings,
-            output_bindings,
+        self.__input_marker_groups, self.__output_marker_groups = filter4(
+            input_marker_groups,
+            output_marker_groups,
             self.__relative_occurrence_threshold,
             (
                 activity_count
@@ -179,7 +181,7 @@ class OCCausalNet(object):
         )
         self.__object_types = {
             o.object_type
-            for binds in self.__input_bindings.values()
+            for binds in self.__input_marker_groups.values()
             for bs in binds
             for o in bs.obligations
         }
@@ -188,10 +190,10 @@ class OCCausalNet(object):
     def __repr__(self):
         ret = f"Dependency graph: {self.dependency_graph}\n"
         for act in self.activities:
-            if act in self.input_bindings:
-                ret += f"Input bindings[{act}]: {self.input_bindings[act]}\n"
-            if act in self.output_bindings:
-                ret += f"Output bindings[{act}]: {self.output_bindings[act]}\n"
+            if act in self.input_marker_groups:
+                ret += f"Input_marker_groups[{act}]: {self.input_marker_groups[act]}\n"
+            if act in self.output_marker_groups:
+                ret += f"Output_marker_groups[{act}]: {self.output_marker_groups[act]}\n"
         return ret
 
     def __str__(self):
@@ -206,11 +208,11 @@ class OCCausalNet(object):
     def __get_edges(self):
         return self.__edges
 
-    def __get_input_bindings(self):
-        return self.__input_bindings
+    def __get_input_marker_groups(self):
+        return self.__input_marker_groups
 
-    def __get_output_bindings(self):
-        return self.__output_bindings
+    def __get_output_marker_groups(self):
+        return self.__output_marker_groups
 
     def __get_object_types(self):
         return self.__object_types
@@ -224,8 +226,8 @@ class OCCausalNet(object):
     dependency_graph = property(__get_dependency_graph)
     activities = property(__get_activities)
     edges = property(__get_edges)
-    input_bindings = property(__get_input_bindings)
-    output_bindings = property(__get_output_bindings)
+    input_marker_groups = property(__get_input_marker_groups)
+    output_marker_groups = property(__get_output_marker_groups)
     object_types = property(__get_object_types)
     activity_count = property(__get_activity_count)
     relative_occurrence_threshold = property(__get_relative_occurrence_threshold)
