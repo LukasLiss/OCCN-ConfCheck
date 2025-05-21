@@ -111,8 +111,7 @@ class OCPetriNet(PetriNet):
                 name, in_arcs=in_arcs, out_arcs=out_arcs, properties=properties
             )
             self.__object_type = object_type
-            
-        
+
         def add_in_arc(self, arc):
             """
             Adds an incoming arc to the place.
@@ -125,7 +124,7 @@ class OCPetriNet(PetriNet):
             self.__in_arcs.add(arc)
             assert arc.target == self
             assert arc.object_type == self.object_type
-        
+
         def add_out_arc(self, arc):
             """
             Adds an outgoing arc to the place.
@@ -176,7 +175,7 @@ class OCPetriNet(PetriNet):
             """
             self.__in_arcs.add(arc)
             assert arc.target == self
-        
+
         def add_out_arc(self, arc):
             """
             Adds an outgoing arc to the place.
@@ -196,7 +195,7 @@ class OCPetriNet(PetriNet):
             target,
             object_type,
             weight=1,
-            is_double=False,
+            is_variable=False,
             properties=None,
         ):
             """
@@ -210,25 +209,25 @@ class OCPetriNet(PetriNet):
                 target place / transition
             weight
                 weight of the arc
-            is_double
-                whether the arc is double (variable)
+            is_variable
+                whether the arc is a variable arc
             properties
                 dict of additional properties
             """
             super().__init__(source, target, weight=weight, properties=properties)
             self.__object_type = object_type
-            self.__is_double = is_double
+            self.__is_variable = is_variable
 
         def __get_object_type(self):
             return self.__object_type
 
-        def __get_is_double(self):
-            return self.__is_double
+        def __get_is_variable(self):
+            return self.__is_variable
 
         def __repr__(self):
             base = super().__repr__()
-            dbl = "double" if self.is_double else "single"
-            return f"{base}:{self.object_type}:{dbl}"
+            var = "variable" if self.is_variable else "non-variable"
+            return f"{base}:{self.object_type}:{var}"
 
         def __deepcopy__(self, memodict={}):
             if id(self) in memodict:
@@ -240,7 +239,7 @@ class OCPetriNet(PetriNet):
                 new_target,
                 self.object_type,
                 weight=self.weight,
-                is_double=self.is_double,
+                is_variable=self.is_variable,
                 properties=self.properties,
             )
             memodict[id(self)] = new_arc
@@ -250,7 +249,7 @@ class OCPetriNet(PetriNet):
             return new_arc
 
         object_type = property(__get_object_type)
-        is_double = property(__get_is_double)
+        is_variable = property(__get_is_variable)
 
     def __init__(
         self,
@@ -317,7 +316,7 @@ class OCPetriNet(PetriNet):
                 tgt,
                 a.object_type,
                 weight=a.weight,
-                is_double=a.is_double,
+                is_variable=a.is_variable,
                 properties=a.properties,
             )
             src.out_arcs.add(a_copy)
@@ -359,7 +358,7 @@ class OCPetriNet(PetriNet):
         ret.append(" " + ", ".join(final_marking_rep) + " ")
         ret.append("]")
         return "".join(ret)
-    
+
     def __str__(self):
         return self.__repr__()
 
