@@ -188,12 +188,13 @@ class OCCausalNet(object):
         self.__activity_count = activity_count
 
     def __repr__(self):
-        ret = f"Dependency graph: {self.dependency_graph}\n"
+        # a OCCN is fully defined by its activities and marker groups
+        ret = f"Activities: {self.activities}"
         for act in self.activities:
-            if act in self.input_marker_groups:
-                ret += f"Input_marker_groups[{act}]: {self.input_marker_groups[act]}\n"
-            if act in self.output_marker_groups:
-                ret += f"Output_marker_groups[{act}]: {self.output_marker_groups[act]}\n"
+            img = self.input_marker_groups[act] if act in self.input_marker_groups else []
+            ret += f"\nInput_marker_groups[{act}]: {img}\n"
+            omg = self.output_marker_groups[act] if act in self.output_marker_groups else []
+            ret += f"Output_marker_groups[{act}]: {omg}"
         return ret
 
     def __str__(self):
