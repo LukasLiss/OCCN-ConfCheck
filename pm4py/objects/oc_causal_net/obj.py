@@ -27,7 +27,7 @@ from typing import Tuple, List, Dict
 
 class OCCausalNet(object):
     """
-    Object-Centric Causal Net capturing dependency graph and token bindings.
+    Object-Centric Causal Net capturing dependency graph and marker groups.
     """
 
     class Marker(object):
@@ -48,7 +48,7 @@ class OCCausalNet(object):
             object_type : str
                 object type of the marker
             count_range : Tuple
-                Min and max number of obligations consumable ('cardinalities')
+                Min and max number of markers consumable ('cardinalities')
             marker_key : int
                 Key of the marker
             """
@@ -118,7 +118,7 @@ class OCCausalNet(object):
                 List of markers that comprise the group
             support_count : int
                 Frequency of this marker group in the event log. May be used to 
-                filter infrequent obligation sets.
+                filter infrequent marker groups.
                 Default is inf.
             """
             self.__markers = markers
@@ -183,7 +183,7 @@ class OCCausalNet(object):
             o.object_type
             for binds in self.__input_marker_groups.values()
             for bs in binds
-            for o in bs.obligations
+            for o in bs.markers
         }
         self.__activity_count = activity_count
 
