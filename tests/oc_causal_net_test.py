@@ -19,7 +19,7 @@ def create_oc_causal_net(marker_groups):
                 "img": [
                     [
                         (activity, object_type, (min_count, max_count), marker_key),
-                        # -1 for max_count = inf; 0 for unique marker key
+                        // -1 for max_count = inf; 0 for unique marker key
                         ...
                     ],
                     ...
@@ -230,6 +230,587 @@ class OCCausalNetTest(unittest.TestCase):
                 "img": [
                     [("a", "item", (1, -1), 0)],
                 ],
+            },
+        }
+
+        occn = create_oc_causal_net(marker_groups)
+        print("\n")
+        print(occn)
+
+    def test_conversion_basic(self):
+        marker_groups = {
+            "START_order": {
+                "img": [],
+                "omg": [
+                    [("a", "order", (1, 1), 0)],
+                ],
+            },
+            "a": {
+                "img": [
+                    [("START_order", "order", (1, 1), 0)],
+                ],
+                "omg": [
+                    [("END_order", "order", (1, 1), 0)],
+                ],
+            },
+            "END_order": {
+                "img": [
+                    [("a", "order", (1, 1), 0)],
+                ]
+            },
+        }
+
+        occn = create_oc_causal_net(marker_groups)
+        print("\n")
+        print(occn)
+
+    def test_conversion_multi(self):
+        marker_groups = {
+            "START_order": {
+                "img": [],
+                "omg": [
+                    [("a", "order", (1, -1), 0)],
+                ],
+            },
+            "a": {
+                "img": [
+                    [("START_order", "order", (1, -1), 0)],
+                ],
+                "omg": [
+                    [("END_order", "order", (1, -1), 0)],
+                ],
+            },
+            "END_order": {
+                "img": [
+                    [("a", "order", (1, -1), 0)],
+                ]
+            },
+        }
+
+        occn = create_oc_causal_net(marker_groups)
+        print("\n")
+        print(occn)
+
+    def test_conversion_combined(self):
+        marker_groups = {
+            "START_order": {
+                "img": [],
+                "omg": [
+                    [("a", "order", (1, 1), 0)],
+                    [("a", "order", (1, -1), 0)],
+                ],
+            },
+            "a": {
+                "img": [
+                    [("START_order", "order", (1, 1), 0)],
+                ],
+                "omg": [
+                    [("END_order", "order", (1, 1), 0)],
+                ],
+            },
+            "END_order": {
+                "img": [
+                    [("a", "order", (1, 1), 0)],
+                    [("a", "order", (1, -1), 0)],
+                ]
+            },
+        }
+
+        occn = create_oc_causal_net(marker_groups)
+        print("\n")
+        print(occn)
+
+    def test_conversion_multi_marker(self):
+        marker_groups = {
+            "START_order": {
+                "img": [],
+                "omg": [
+                    [("a", "order", (1, -1), 0)],
+                ],
+            },
+            "a": {
+                "img": [
+                    [("START_order", "order", (2, 2), 0)],
+                ],
+                "omg": [
+                    [
+                        ("END_order", "order", (1, 1), 0),
+                        ("b", "order", (1, 1), 0),
+                    ],
+                ],
+            },
+            "b": {
+                "img": [
+                    [("a", "order", (1, 1), 0)],
+                ],
+                "omg": [
+                    [
+                        ("END_order", "order", (1, 1), 0),
+                    ],
+                ],
+            },
+            "END_order": {
+                "img": [
+                    [("a", "order", (1, 1), 0)],
+                    [("b", "order", (1, 1), 0)],
+                ]
+            },
+        }
+
+        occn = create_oc_causal_net(marker_groups)
+        print("\n")
+        print(occn)
+
+    def test_conversion_multi_square_marker(self):
+        marker_groups = {
+            "START_order": {
+                "img": [],
+                "omg": [
+                    [("a", "order", (1, -1), 0)],
+                ],
+            },
+            "a": {
+                "img": [
+                    [("START_order", "order", (1, -1), 0)],
+                ],
+                "omg": [
+                    [
+                        ("END_order", "order", (1, -1), 0),
+                        ("b", "order", (1, 1), 0),
+                    ],
+                ],
+            },
+            "b": {
+                "img": [
+                    [("a", "order", (1, 1), 0)],
+                ],
+                "omg": [
+                    [
+                        ("END_order", "order", (1, 1), 0),
+                    ],
+                ],
+            },
+            "END_order": {
+                "img": [
+                    [("a", "order", (1, -1), 0), ("b", "order", (1, 1), 0)],
+                ]
+            },
+        }
+
+        occn = create_oc_causal_net(marker_groups)
+        print("\n")
+        print(occn)
+
+    def test_conversion_triple_marker(self):
+        marker_groups = {
+            "START_order": {
+                "img": [],
+                "omg": [
+                    [("a", "order", (1, -1), 0)],
+                ],
+            },
+            "a": {
+                "img": [
+                    [("START_order", "order", (1, -1), 0)],
+                ],
+                "omg": [
+                    [
+                        ("END_order", "order", (1, -1), 0),
+                        ("b", "order", (1, 1), 0),
+                        ("c", "order", (1, -1), 0),
+                    ],
+                ],
+            },
+            "b": {
+                "img": [
+                    [("a", "order", (1, 1), 0)],
+                ],
+                "omg": [
+                    [
+                        ("END_order", "order", (1, 1), 0),
+                    ],
+                ],
+            },
+            "c": {
+                "img": [
+                    [("a", "order", (1, -1), 0)],
+                ],
+                "omg": [
+                    [
+                        ("END_order", "order", (1, -1), 0),
+                    ],
+                ],
+            },
+            "END_order": {
+                "img": [
+                    [
+                        ("a", "order", (1, -1), 0),
+                        ("b", "order", (1, 1), 0),
+                        ("c", "order", (1, -1), 0),
+                    ],
+                ]
+            },
+        }
+
+        occn = create_oc_causal_net(marker_groups)
+        print("\n")
+        print(occn)
+
+    def test_conversion_key(self):
+        marker_groups = {
+            "START_order": {
+                "img": [],
+                "omg": [
+                    [("a", "order", (1, -1), 0)],
+                ],
+            },
+            "a": {
+                "img": [
+                    [("START_order", "order", (1, -1), 0)],
+                ],
+                "omg": [
+                    [
+                        ("END_order", "order", (1, -1), 1),
+                        ("b", "order", (1, 1), 1),
+                        ("c", "order", (1, -1), 1),
+                    ],
+                ],
+            },
+            "b": {
+                "img": [
+                    [("a", "order", (1, 1), 0)],
+                ],
+                "omg": [
+                    [
+                        ("END_order", "order", (1, 1), 0),
+                    ],
+                ],
+            },
+            "c": {
+                "img": [
+                    [("a", "order", (1, -1), 0)],
+                ],
+                "omg": [
+                    [
+                        ("END_order", "order", (1, -1), 0),
+                    ],
+                ],
+            },
+            "END_order": {
+                "img": [
+                    [
+                        ("a", "order", (1, -1), 0),
+                        ("b", "order", (1, 1), 0),
+                        ("c", "order", (1, -1), 0),
+                    ],
+                ]
+            },
+        }
+
+        occn = create_oc_causal_net(marker_groups)
+        print("\n")
+        print(occn)
+
+    def test_conversion_key_order(self):
+        marker_groups = {
+            "START_order": {
+                "img": [],
+                "omg": [
+                    [("a", "order", (1, -1), 0)],
+                ],
+            },
+            "a": {
+                "img": [
+                    [("START_order", "order", (1, -1), 0)],
+                ],
+                "omg": [
+                    [
+                        ("END_order", "order", (1, -1), 1),
+                        ("b", "order", (1, 1), 0),
+                        ("c", "order", (1, -1), 1),
+                    ],
+                ],
+            },
+            "b": {
+                "img": [
+                    [("a", "order", (1, 1), 0)],
+                ],
+                "omg": [
+                    [
+                        ("END_order", "order", (1, 1), 0),
+                    ],
+                ],
+            },
+            "c": {
+                "img": [
+                    [("a", "order", (1, -1), 0)],
+                ],
+                "omg": [
+                    [
+                        ("END_order", "order", (1, -1), 0),
+                    ],
+                ],
+            },
+            "END_order": {
+                "img": [
+                    [
+                        ("a", "order", (1, -1), 0),
+                        ("b", "order", (1, 1), 0),
+                        ("c", "order", (1, -1), 0),
+                    ],
+                ]
+            },
+        }
+
+        occn = create_oc_causal_net(marker_groups)
+        print("\n")
+        print(occn)
+
+    def test_conversion_key_order_square(self):
+        marker_groups = {
+            "START_order": {
+                "img": [],
+                "omg": [
+                    [("a", "order", (1, -1), 0)],
+                ],
+            },
+            "a": {
+                "img": [
+                    [("START_order", "order", (1, -1), 0)],
+                ],
+                "omg": [
+                    [
+                        ("END_order", "order", (1, -1), 1),
+                        ("b", "order", (1, -1), 0),
+                        ("c", "order", (1, -1), 1),
+                    ],
+                ],
+            },
+            "b": {
+                "img": [
+                    [("a", "order", (1, 1), 0)],
+                ],
+                "omg": [
+                    [
+                        ("END_order", "order", (1, 1), 0),
+                    ],
+                ],
+            },
+            "c": {
+                "img": [
+                    [("a", "order", (1, -1), 0)],
+                ],
+                "omg": [
+                    [
+                        ("END_order", "order", (1, -1), 0),
+                    ],
+                ],
+            },
+            "END_order": {
+                "img": [
+                    [
+                        ("a", "order", (1, -1), 0),
+                        ("b", "order", (1, 1), 0),
+                        ("c", "order", (1, -1), 0),
+                    ],
+                ]
+            },
+        }
+
+        occn = create_oc_causal_net(marker_groups)
+        print("\n")
+        print(occn)
+
+    def test_conversion_multi_key(self):
+        marker_groups = {
+            "START_order": {
+                "img": [],
+                "omg": [
+                    [("a", "order", (1, -1), 0)],
+                ],
+            },
+            "a": {
+                "img": [
+                    [("START_order", "order", (1, -1), 0)],
+                ],
+                "omg": [
+                    [
+                        ("END_order", "order", (1, -1), 1),
+                        ("b", "order", (1, 1), 1),
+                        ("c", "order", (1, -1), 1),
+                    ],
+                    [
+                        ("END_order", "order", (1, -1), 2),
+                        ("b", "order", (1, 1), 2),
+                    ],
+                ],
+            },
+            "b": {
+                "img": [
+                    [("a", "order", (1, 1), 0)],
+                ],
+                "omg": [
+                    [
+                        ("END_order", "order", (1, 1), 0),
+                    ],
+                ],
+            },
+            "c": {
+                "img": [
+                    [("a", "order", (1, -1), 0)],
+                ],
+                "omg": [
+                    [
+                        ("END_order", "order", (1, -1), 0),
+                    ],
+                ],
+            },
+            "END_order": {
+                "img": [
+                    [
+                        ("a", "order", (1, -1), 0),
+                        ("b", "order", (1, 1), 0),
+                        ("c", "order", (1, -1), 0),
+                    ],
+                ]
+            },
+        }
+
+        occn = create_oc_causal_net(marker_groups)
+        print("\n")
+        print(occn)
+
+    def test_conversion_multi_ot(self):
+        marker_groups = {
+            "START_order": {
+                "img": [],
+                "omg": [
+                    [("a", "order", (1, 1), 0)],
+                ],
+            },
+            "START_item": {
+                "img": [],
+                "omg": [
+                    [("a", "item", (1, -1), 0)],
+                ],
+            },
+            "a": {
+                "img": [
+                    [
+                        ("START_order", "order", (1, 1), 0),
+                        ("START_item", "item", (1, -1), 0),
+                    ],
+                ],
+                "omg": [
+                    [
+                        ("END_order", "order", (1, 1), 0),
+                        ("END_item", "item", (1, -1), 0),
+                    ],
+                ],
+            },
+            "END_order": {
+                "img": [
+                    [("a", "order", (1, 1), 0)],
+                ]
+            },
+            "END_item": {
+                "img": [
+                    [("a", "item", (1, -1), 0)],
+                ]
+            },
+        }
+
+        occn = create_oc_causal_net(marker_groups)
+        print("\n")
+        print(occn)
+
+    def test_conversion_multi_ot_multi_marker(self):
+        marker_groups = {
+            "START_order": {
+                "img": [],
+                "omg": [
+                    [("a", "order", (1, 1), 0)],
+                ],
+            },
+            "START_item": {
+                "img": [],
+                "omg": [
+                    [("a", "item", (1, -1), 0)],
+                ],
+            },
+            "a": {
+                "img": [
+                    [
+                        ("START_order", "order", (1, 1), 0),
+                        ("START_item", "item", (1, -1), 0),
+                    ],
+                    [
+                        ("START_item", "item", (1, -1), 0),
+                    ],
+                ],
+                "omg": [
+                    [
+                        ("END_order", "order", (1, 1), 0),
+                        ("END_item", "item", (1, -1), 0),
+                    ],
+                    [
+                        ("END_item", "item", (1, -1), 0),
+                    ],
+                ],
+            },
+            "END_order": {
+                "img": [
+                    [("a", "order", (1, 1), 0)],
+                ]
+            },
+            "END_item": {
+                "img": [
+                    [("a", "item", (1, -1), 0)],
+                ]
+            },
+        }
+
+        occn = create_oc_causal_net(marker_groups)
+        print("\n")
+        print(occn)
+
+
+    def test_conversion_ABC(self):
+        marker_groups = {
+            "START_order": {
+                "img": [],
+                "omg": [
+                    [("a", "order", (1, 1), 0)],
+                ],
+            },
+            "a": {
+                "img": [
+                    [("START_order", "order", (1, 1), 0)],
+                ],
+                "omg": [
+                    [("b", "order", (1, 1), 0)],
+                ],
+            },
+            "b": {
+                "img": [
+                    [("a", "order", (1, 1), 0)],
+                ],
+                "omg": [
+                    [("c", "order", (1, 1), 0)],
+                ],
+            },
+            "c": {
+                "img": [
+                    [("b", "order", (1, 1), 0)],
+                ],
+                "omg": [
+                    [("END_order", "order", (1, 1), 0)],
+                ],
+            },
+            "END_order": {
+                "img": [
+                    [("c", "order", (1, 1), 0)],
+                ]
             },
         }
 
