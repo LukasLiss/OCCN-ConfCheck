@@ -315,8 +315,8 @@ class OCPN_Test(unittest.TestCase):
 
         self.assertTrue(eq_no_keys(occn, expected_occn))
 
-    """def test_conversion_04(self):
-        name = "OCPN_04"
+    def test_conversion_big(self):
+        name = "OCPN_big"
         o1 = OCPetriNet.Place("o1", "order")
         o2 = OCPetriNet.Place("o2", "order")
         o3 = OCPetriNet.Place("o3", "order")
@@ -448,7 +448,199 @@ class OCPN_Test(unittest.TestCase):
         print(ocpn)
         print("\nConverted OCCN:")
         occn = converter.apply(ocpn)
-        print(occn) """
+        print(occn)
+
+        # correct OCCN
+        marker_groups = {
+            "START_order": {
+                "omg": [
+                    [("o1", "order", (1, -1), 0)],
+                ],
+            },
+            "o1": {
+                "img": [
+                    [("START_order", "order", (1, -1), 0)],
+                ],
+                "omg": [
+                    [
+                        ("po", "order", (1, -1), 0),
+                    ],
+                ],
+            },
+            "START_item": {
+                "omg": [
+                    [
+                        ("i1", "item", (1, -1), 0),
+                    ],
+                ],
+            },
+            "i1": {
+                "img": [
+                    [("START_item", "item", (1, -1), 0)],
+                ],
+                "omg": [
+                    [
+                        ("po", "item", (1, -1), 0),
+                    ],
+                ],
+            },
+            "po": {
+                "img": [
+                    [("o1", "order", (1, 1), 0), ("i1", "item", (1, -1), 0)],
+                ],
+                "omg": [
+                    [("o2", "order", (1, 1), 0), ("i2", "item", (1, -1), 0)],
+                ],
+            },
+            "o2": {
+                "img": [
+                    [("po", "order", (1, -1), 0)],
+                ],
+                "omg": [
+                    [
+                        ("si", "order", (1, -1), 0),
+                    ],
+                ],
+            },
+            "i2": {
+                "img": [
+                    [("po", "item", (1, -1), 0)],
+                ],
+                "omg": [
+                    [
+                        ("pi", "item", (1, -1), 0),
+                    ],
+                ],
+            },
+            "si": {
+                "img": [
+                    [("o2", "order", (1, 1), 0)],
+                ],
+                "omg": [
+                    [("o3", "order", (1, 1), 0)],
+                ],
+            },
+            "pi": {
+                "img": [
+                    [("i2", "item", (1, 1), 0)],
+                ],
+                "omg": [
+                    [("i3", "item", (1, 1), 0)],
+                ],
+            },
+            "o3": {
+                "img": [
+                    [("si", "order", (1, -1), 0)],
+                ],
+                "omg": [
+                    [
+                        ("sr", "order", (1, -1), 0),
+                    ],
+                    [
+                        ("pa", "order", (1, -1), 0),
+                    ],
+                ],
+            },
+            "sr": {
+                "img": [
+                    [("o3", "order", (1, 1), 0)],
+                ],
+                "omg": [
+                    [("o3", "order", (1, 1), 0)],
+                ],
+            },
+            "i3": {
+                "img": [
+                    [("pi", "item", (1, -1), 0)],
+                ],
+                "omg": [
+                    [
+                        ("sh", "item", (1, -1), 0),
+                    ],
+                ],
+            },
+            "pa": {
+                "img": [
+                    [("o3", "order", (1, 1), 0)],
+                ],
+                "omg": [
+                    [("o4", "order", (1, 1), 0)],
+                ],
+            },
+            "sh": {
+                "img": [
+                    [("i3", "item", (1, 1), 0)],
+                ],
+                "omg": [
+                    [("i4", "item", (1, 1), 0)],
+                ],
+            },
+            "o4": {
+                "img": [
+                    [("pa", "order", (1, -1), 0)],
+                ],
+                "omg": [
+                    [
+                        ("co", "order", (1, -1), 0),
+                    ],
+                ],
+            },
+            "i4": {
+                "img": [
+                    [("sh", "item", (1, -1), 0)],
+                ],
+                "omg": [
+                    [
+                        ("co", "item", (1, -1), 0),
+                    ],
+                ],
+            },
+            "co": {
+                "img": [
+                    [("o4", "order", (1, 1), 0), ("i4", "item", (1, -1), 0)],
+                ],
+                "omg": [
+                    [("o5", "order", (1, 1), 0), ("i5", "item", (1, -1), 0)],
+                ],
+            },
+            "o5": {
+                "img": [
+                    [("co", "order", (1, -1), 0)],
+                ],
+                "omg": [
+                    [
+                        ("END_order", "order", (1, -1), 0),
+                    ],
+                ],
+            },
+            "i5": {
+                "img": [
+                    [("co", "item", (1, -1), 0)],
+                ],
+                "omg": [
+                    [
+                        ("END_item", "item", (1, -1), 0),
+                    ],
+                ],
+            },
+            "END_order": {
+                "img": [
+                    [("o5", "order", (1, -1), 0)],
+                ],
+            },
+            "END_item": {
+                "img": [
+                    [("i5", "item", (1, -1), 0)],
+                ],
+            },
+        }
+
+        expected_occn = create_oc_causal_net(marker_groups)
+
+        print("\nExpected OCCN:")
+        print(expected_occn)
+
+        self.assertTrue(eq_no_keys(occn, expected_occn))
 
 
 def eq_no_keys(occn: OCCausalNet, other: OCCausalNet) -> bool:
