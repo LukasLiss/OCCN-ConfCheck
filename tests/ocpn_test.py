@@ -167,9 +167,6 @@ class OCPN_Test(unittest.TestCase):
         print("\nConverted OCCN:")
         occn = converter.apply(ocpn)
         print(occn)
-        print("\nConverted OCCN:")
-        occn = converter.apply(ocpn)
-        print(occn)
 
         # correct OCCN
         marker_groups = {
@@ -213,6 +210,127 @@ class OCPN_Test(unittest.TestCase):
             "END_order": {
                 "img": [
                     [("o2", "order", (1, -1), 0)],
+                ],
+            },
+        }
+
+        expected_occn = create_oc_causal_net(marker_groups)
+
+        print("\nExpected OCCN:")
+        print(expected_occn)
+
+        self.assertTrue(eq_no_keys(occn, expected_occn))
+        
+    def test_conversion_multi_start(self):
+        name = "OCPN_multi_start"
+
+        o1 = OCPetriNet.Place("o1", "order")
+        o2 = OCPetriNet.Place("o2", "order")
+        o3 = OCPetriNet.Place("o3", "order")
+        o4 = OCPetriNet.Place("o4", "order")
+
+        a = OCPetriNet.Transition("a", "create_order")
+
+        a1 = OCPetriNet.Arc(o1, a, "order", is_variable=False)
+        o1.add_out_arc(a1)
+        a.add_in_arc(a1)
+
+        a2 = OCPetriNet.Arc(a, o2, "order", is_variable=False)
+        a.add_out_arc(a2)
+        o2.add_in_arc(a2)
+        
+        a3 = OCPetriNet.Arc(o3, a, "order", is_variable=False)
+        o3.add_out_arc(a3)
+        a.add_in_arc(a3)
+        
+        a4 = OCPetriNet.Arc(a, o4, "order", is_variable=False)
+        a.add_out_arc(a4)
+        o4.add_in_arc(a4)
+        
+        
+
+        initial_marking = OCMarking({("order1", o1): 1, ("order2", o3): 1})
+        final_marking = OCMarking({("order1", o2): 1, ("order2", o4): 1})
+
+        ocpn = OCPetriNet(
+            name,
+            places=[o1, o2, o3, o4],
+            transitions=[a],
+            arcs=[a1, a2, a3, a4],
+            initial_marking=initial_marking,
+            final_marking=final_marking,
+        )
+
+        print("\n")
+        print(ocpn)
+        print("\nConverted OCCN:")
+        occn = converter.apply(ocpn)
+        print(occn)
+
+        # correct OCCN
+        marker_groups = {
+            "START_order": {
+                "omg": [
+                    [("o1", "order", (1, -1), 0), ("o3", "order", (1, -1), 0)],
+                ],
+            },
+            "o1": {
+                "img": [
+                    [("START_order", "order", (1, -1), 0)],
+                ],
+                "omg": [
+                    [
+                        ("a", "order", (1, -1), 0),
+                    ],
+                ],
+            },
+            "o3": {
+                "img": [
+                    [("START_order", "order", (1, -1), 0)],
+                ],
+                "omg": [
+                    [
+                        ("a", "order", (1, -1), 0),
+                    ],
+                ],
+            },
+            "a": {
+                "img": [
+                    [
+                        ("o1", "order", (1, 1), 0),
+                        ("o3", "order", (1, 1), 0),
+                    ],
+                ],
+                "omg": [
+                    [
+                        ("o2", "order", (1, 1), 0),
+                        ("o4", "order", (1, 1), 0),
+                    ],
+                ],
+            },
+            "o2": {
+                "img": [
+                    [("a", "order", (1, -1), 0)],
+                ],
+                "omg": [
+                    [
+                        ("END_order", "order", (1, -1), 0),
+                    ],
+                ],
+            },
+            "o4": {
+                "img": [
+                    [("a", "order", (1, -1), 0)],
+                ],
+                "omg": [
+                    [
+                        ("END_order", "order", (1, -1), 0),
+                    ],
+                ],
+            },
+            "END_order": {
+                "img": [
+                    [("o2", "order", (1, -1), 0), ("o4", "order", (1, -1), 0)],
                 ],
             },
         }
@@ -486,10 +604,10 @@ class OCPN_Test(unittest.TestCase):
             },
             "po": {
                 "img": [
-                    [("o1", "order", (1, 1), 0), ("i1", "item", (1, -1), 0)],
+                    [("o1", "order", (1, 1), 0), ("i1", "item", (0, -1), 0)],
                 ],
                 "omg": [
-                    [("o2", "order", (1, 1), 0), ("i2", "item", (1, -1), 0)],
+                    [("o2", "order", (1, 1), 0), ("i2", "item", (0, -1), 0)],
                 ],
             },
             "o2": {
@@ -531,6 +649,7 @@ class OCPN_Test(unittest.TestCase):
             "o3": {
                 "img": [
                     [("si", "order", (1, -1), 0)],
+                    [("sr", "order", (1, -1), 0)],
                 ],
                 "omg": [
                     [
@@ -597,10 +716,10 @@ class OCPN_Test(unittest.TestCase):
             },
             "co": {
                 "img": [
-                    [("o4", "order", (1, 1), 0), ("i4", "item", (1, -1), 0)],
+                    [("o4", "order", (1, 1), 0), ("i4", "item", (0, -1), 0)],
                 ],
                 "omg": [
-                    [("o5", "order", (1, 1), 0), ("i5", "item", (1, -1), 0)],
+                    [("o5", "order", (1, 1), 0), ("i5", "item", (0, -1), 0)],
                 ],
             },
             "o5": {
