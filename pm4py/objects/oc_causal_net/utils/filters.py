@@ -83,11 +83,14 @@ def filter4(input_marker_groups, output_marker_groups, threshold, activity_count
         OCCausalNet.MarkerGroup
             The one with the highest support_count.
         """
-        most_frequent_marker_group = marker_groups[
-            [marker_group.support_count for marker_group in marker_groups].index(
-                max([marker_group.support_count for marker_group in marker_groups])
-            )
-        ]
+        try:
+            most_frequent_marker_group = marker_groups[
+                [marker_group.support_count for marker_group in marker_groups].index(
+                    max([marker_group.support_count for marker_group in marker_groups])
+                )
+            ]
+        except ValueError as e:
+            raise Exception(f"Invalid marker groups provided for some activity. Error: {e}")
         return most_frequent_marker_group
 
     def getSubsequentInputMarkerGroups(most_frequent_marker_group, activity):
