@@ -23,6 +23,7 @@ Contact: info@processintelligence.solutions
 import networkx as nx
 from pm4py.objects.oc_causal_net.utils.filters import filter4
 from typing import Tuple, List, Dict
+from collections import Counter
 
 
 class OCCausalNet(object):
@@ -63,6 +64,15 @@ class OCCausalNet(object):
         def __str__(self):
             return self.__repr__()
 
+        def __hash__(self):
+            return hash((
+                self.related_activity,
+                self.object_type,
+                self.min_count,
+                self.max_count,
+                self.marker_key,
+            ))
+
         def __get_related_activity(self):
             return self.__related_activity
 
@@ -80,13 +90,18 @@ class OCCausalNet(object):
 
         def __get_marker_key(self):
             return self.__marker_key
+        
+        def __set_marker_key(self, marker_key: int):
+            self.__marker_key = marker_key
+            
 
         def __eq__(self, other):
             if isinstance(other, OCCausalNet.Marker):
                 return (
                     self.related_activity == other.related_activity
                     and self.object_type == other.object_type
-                    and self.count_range == other.count_range
+                    and self.min_count == other.min_count
+                    and self.max_count == other.max_count
                     and self.marker_key == other.marker_key
                 )
             return False
@@ -96,7 +111,7 @@ class OCCausalNet(object):
         count_range = property(__get_count_range)
         min_count = property(__get_min_count)
         max_count = property(__get_max_count)
-        marker_key = property(__get_marker_key)
+        marker_key = property(__get_marker_key, __set_marker_key)
 
     class MarkerGroup(object):
         """
@@ -129,6 +144,21 @@ class OCCausalNet(object):
 
         def __str__(self):
             return self.__repr__()
+
+        def __eq__(self, other):
+            if isinstance(other, OCCausalNet.MarkerGroup):
+                return (
+                    self.markers == other.markers
+                    and self.support_count == other.support_count
+                )
+            return False
+
+        def __hash__(self):
+            return hash((
+                frozenset(self.markers),
+                self.support_count,
+            ))
+
 
         def __get_markers(self):
             return self.__markers
@@ -203,6 +233,34 @@ class OCCausalNet(object):
 
     def __str__(self):
         return self.__repr__()
+
+    def __hash__(self):
+        return id(self)
+
+    def __eq__(self, other):
+        if isinstance(other, OCCausalNet):
+            return (
+                set(self.activities) == set(other.activities)
+                and set(self.edges) == set(other.edges)
+                and all(
+                    Counter(self.input_marker_groups.get(a, []))
+                    == Counter(other.input_marker_groups.get(a, []))
+                    for a in self.activities
+                )
+                and all(
+                    Counter(self.output_marker_groups.get(a, []))
+                    == Counter(other.output_marker_groups.get(a, []))
+                    for a in self.activities
+                )
+                and set(self.object_types) == set(other.object_types)
+                and all(
+                    self.activity_count.get(a, 0) == other.activity_count.get(a, 0)
+                    for a in self.activities
+                )
+                and self.relative_occurrence_threshold
+                == other.relative_occurrence_threshold
+            )
+        return False
 
     def __get_dependency_graph(self):
         return self.__dependency_graph
