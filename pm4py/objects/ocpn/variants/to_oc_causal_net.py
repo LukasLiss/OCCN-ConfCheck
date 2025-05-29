@@ -303,6 +303,8 @@ def add_start_end_act_markers(
     for ot in object_types:
         for p in start_places[ot]:
             # add new marker group
+            if p.name not in input_marker_groups:
+                input_marker_groups[p.name] = []
             input_marker_groups[p.name].append(
                 OCCausalNet.MarkerGroup(
                     [
@@ -317,6 +319,8 @@ def add_start_end_act_markers(
             )
         for p in end_places[ot]:
             # add new marker group
+            if p.name not in output_marker_groups:
+                output_marker_groups[p.name] = []
             output_marker_groups[p.name].append(
                 OCCausalNet.MarkerGroup(
                     [
