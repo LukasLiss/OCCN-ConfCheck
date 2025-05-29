@@ -84,6 +84,18 @@ class OCMarking(Counter):
             )
             new_marking[(obj_id, place_copy)] = count
         return new_marking
+    
+    @property
+    def places(self) -> Set:
+        """
+        Returns the set of all places in the marking.
+
+        Returns
+        ------------
+        Set[str]
+            Set of place names in the marking.
+        """
+        return {place for (obj_id, place) in self.keys()}
 
 
 class OCPetriNet(PetriNet):

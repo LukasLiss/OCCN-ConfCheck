@@ -32,16 +32,16 @@ def apply(ocpn, parameters=None, variant=Variants.TO_OC_CAUSAL_NET):
 
     Parameters
     -----------
-    ocpn
+    ocpn: OCPetriNet
         Object-centric Petri net
     parameters
         Parameters of the algorithm
     variant
-        Chosen variant of the algorithm:
-            - Variants.TO_OC_CAUSAL_NET
+        Chosen variant of the algorithm
 
     Returns
     -----------
-    TODO
+    OCCausalNet
+        Object-centric Causal Net
     """
     return exec_utils.get_variant(variant).apply(ocpn, parameters=parameters)

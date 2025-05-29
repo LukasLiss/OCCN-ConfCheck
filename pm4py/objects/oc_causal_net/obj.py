@@ -117,7 +117,7 @@ class OCCausalNet(object):
             markers : List[OCCausalNet.Marker]
                 List of markers that comprise the group
             support_count : int
-                Frequency of this marker group in the event log. May be used to 
+                Frequency of this marker group in the event log. May be used to
                 filter infrequent marker groups.
                 Default is inf.
             """
@@ -167,17 +167,15 @@ class OCCausalNet(object):
         """
         self.__dependency_graph = dependency_graph
         self.__activities = list(dependency_graph._node.keys())
+        if activity_count is None:
+            activity_count = {act: 1 for act in self.activities}
         self.__edges = dependency_graph._succ
         self.__relative_occurrence_threshold = relative_occurrence_threshold
         self.__input_marker_groups, self.__output_marker_groups = filter4(
             input_marker_groups,
             output_marker_groups,
             self.__relative_occurrence_threshold,
-            (
-                activity_count
-                if activity_count is not None
-                else {act: 1 for act in self.activities}
-            ),
+            activity_count,
         )
         self.__object_types = {
             o.object_type
@@ -191,9 +189,15 @@ class OCCausalNet(object):
         # a OCCN is fully defined by its activities and marker groups
         ret = f"Activities: {self.activities}"
         for act in self.activities:
-            img = self.input_marker_groups[act] if act in self.input_marker_groups else []
+            img = (
+                self.input_marker_groups[act] if act in self.input_marker_groups else []
+            )
             ret += f"\nInput_marker_groups[{act}]: {img}\n"
-            omg = self.output_marker_groups[act] if act in self.output_marker_groups else []
+            omg = (
+                self.output_marker_groups[act]
+                if act in self.output_marker_groups
+                else []
+            )
             ret += f"Output_marker_groups[{act}]: {omg}"
         return ret
 
