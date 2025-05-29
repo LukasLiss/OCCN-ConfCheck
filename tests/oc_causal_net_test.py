@@ -191,7 +191,7 @@ class OCCausalNetTest(unittest.TestCase):
             },
         )
 
-        print("\n")
+        print("\nTEST OCCN CONSTRUCTOR 01")
         print(occn)
 
     def test_constructor_02(self):
@@ -234,7 +234,7 @@ class OCCausalNetTest(unittest.TestCase):
         }
 
         occn = create_oc_causal_net(marker_groups)
-        print("\n")
+        print("\nTEST OCCN CONSTRUCTOR 02")
         print(occn)
 
     def test_conversion_basic(self):
@@ -261,7 +261,7 @@ class OCCausalNetTest(unittest.TestCase):
         }
 
         occn = create_oc_causal_net(marker_groups)
-        print("\n")
+        print("\nTEST OCCN CONVERSION BASIC")
         print(occn)
 
     def test_conversion_multi(self):
@@ -288,7 +288,7 @@ class OCCausalNetTest(unittest.TestCase):
         }
 
         occn = create_oc_causal_net(marker_groups)
-        print("\n")
+        print("\nTEST OCCN CONVERSION MULTI")
         print(occn)
 
     def test_conversion_combined(self):
@@ -317,7 +317,7 @@ class OCCausalNetTest(unittest.TestCase):
         }
 
         occn = create_oc_causal_net(marker_groups)
-        print("\n")
+        print("\nTEST OCCN CONVERSION COMBINED")
         print(occn)
 
     def test_conversion_multi_marker(self):
@@ -358,7 +358,7 @@ class OCCausalNetTest(unittest.TestCase):
         }
 
         occn = create_oc_causal_net(marker_groups)
-        print("\n")
+        print("\nTEST OCCN CONVERSION MULTI MARKER")
         print(occn)
 
     def test_conversion_multi_square_marker(self):
@@ -398,7 +398,7 @@ class OCCausalNetTest(unittest.TestCase):
         }
 
         occn = create_oc_causal_net(marker_groups)
-        print("\n")
+        print("\nTEST OCCN CONVERSION SQUARE MARKER")
         print(occn)
 
     def test_conversion_triple_marker(self):
@@ -453,7 +453,7 @@ class OCCausalNetTest(unittest.TestCase):
         }
 
         occn = create_oc_causal_net(marker_groups)
-        print("\n")
+        print("\nTEST OCCN CONVERSION TRIPLE MARKER")
         print(occn)
 
     def test_conversion_key(self):
@@ -508,7 +508,7 @@ class OCCausalNetTest(unittest.TestCase):
         }
 
         occn = create_oc_causal_net(marker_groups)
-        print("\n")
+        print("\nTEST OCCN CONVERSION KEY")
         print(occn)
 
     def test_conversion_key_order(self):
@@ -563,7 +563,7 @@ class OCCausalNetTest(unittest.TestCase):
         }
 
         occn = create_oc_causal_net(marker_groups)
-        print("\n")
+        print("\nTEST OCCN CONVERSION KEY ORDER")
         print(occn)
 
     def test_conversion_key_order_square(self):
@@ -618,7 +618,7 @@ class OCCausalNetTest(unittest.TestCase):
         }
 
         occn = create_oc_causal_net(marker_groups)
-        print("\n")
+        print("\nTEST OCCN CONVERSION KEY ORDER SQUARE")
         print(occn)
 
     def test_conversion_multi_key(self):
@@ -677,7 +677,7 @@ class OCCausalNetTest(unittest.TestCase):
         }
 
         occn = create_oc_causal_net(marker_groups)
-        print("\n")
+        print("\nTEST OCCN CONVERSION MULTI KEY")
         print(occn)
 
     def test_conversion_multi_ot(self):
@@ -721,7 +721,7 @@ class OCCausalNetTest(unittest.TestCase):
         }
 
         occn = create_oc_causal_net(marker_groups)
-        print("\n")
+        print("\nTEST OCCN CONVERSION MULTI OT")
         print(occn)
 
     def test_conversion_multi_ot_multi_marker(self):
@@ -771,7 +771,7 @@ class OCCausalNetTest(unittest.TestCase):
         }
 
         occn = create_oc_causal_net(marker_groups)
-        print("\n")
+        print("\nTEST OCCN CONVERSION MULTI OT MULTI MARKER")
         print(occn)
 
 
@@ -815,7 +815,25 @@ class OCCausalNetTest(unittest.TestCase):
         }
 
         occn = create_oc_causal_net(marker_groups)
-        print("\n")
+        print("\nTEST OCCN CONVERSION ABC")
+        print(occn)
+        
+    def test_conversion_isolated(self):
+        arcs = dict()
+        arcs["a"] = {}
+        arcs["START_order"] = {}
+        arcs["END_order"] = {}
+         
+
+        occn = OCCausalNet(
+            nx.MultiDiGraph(arcs),
+            {
+            },
+            {
+            },
+        )
+
+        print("\nTEST OCCN CONVERSION ISOLATED")
         print(occn)
 
 
