@@ -63,9 +63,7 @@ class OCPN_Test(unittest.TestCase):
             },
             "p1": {
                 "img": [
-                    [
-                        ("START_order", "order", (1, -1), 0)
-                    ],
+                    [("START_order", "order", (1, -1), 0)],
                 ],
                 "omg": [
                     [
@@ -75,9 +73,7 @@ class OCPN_Test(unittest.TestCase):
             },
             "p2": {
                 "img": [
-                    [
-                        ("START_item", "item", (1, -1), 0)
-                    ],
+                    [("START_item", "item", (1, -1), 0)],
                 ],
                 "omg": [
                     [
@@ -101,9 +97,7 @@ class OCPN_Test(unittest.TestCase):
             },
             "p3": {
                 "img": [
-                    [
-                        ("a", "order", (1, -1), 0)
-                    ],
+                    [("a", "order", (1, -1), 0)],
                 ],
                 "omg": [
                     [
@@ -113,9 +107,7 @@ class OCPN_Test(unittest.TestCase):
             },
             "p4": {
                 "img": [
-                    [
-                        ("a", "item", (1, -1), 0)
-                    ],
+                    [("a", "item", (1, -1), 0)],
                 ],
                 "omg": [
                     [
@@ -136,32 +128,31 @@ class OCPN_Test(unittest.TestCase):
         }
 
         expected_occn = create_oc_causal_net(marker_groups)
-    
+
         print("\nExpected OCCN:")
         print(expected_occn)
-        
-        self.assertTrue(eq_no_keys(occn,expected_occn))
-        
 
-    """ def test_conversion_02(self):
-        name = "OCPN_02"
-        
+        self.assertTrue(eq_no_keys(occn, expected_occn))
+
+    def test_conversion_basic(self):
+        name = "OCPN_basic"
+
         o1 = OCPetriNet.Place("o1", "order")
         o2 = OCPetriNet.Place("o2", "order")
-        
+
         a = OCPetriNet.Transition("a", "create_order")
-        
+
         a1 = OCPetriNet.Arc(o1, a, "order", is_variable=False)
         o1.add_out_arc(a1)
         a.add_in_arc(a1)
-        
+
         a2 = OCPetriNet.Arc(a, o2, "order", is_variable=False)
         a.add_out_arc(a2)
         o2.add_in_arc(a2)
-        
+
         initial_marking = OCMarking({("order1", o1): 1})
         final_marking = OCMarking({("order1", o2): 1})
-        
+
         ocpn = OCPetriNet(
             name,
             places=[o1, o2],
@@ -170,34 +161,88 @@ class OCPN_Test(unittest.TestCase):
             initial_marking=initial_marking,
             final_marking=final_marking,
         )
-        
+
         print("\n")
         print(ocpn)
         print("\nConverted OCCN:")
         occn = converter.apply(ocpn)
         print(occn)
-        
-        
-        
-    def test_conversion_03(self):
-        name = "OCPN_03"
-        
+        print("\nConverted OCCN:")
+        occn = converter.apply(ocpn)
+        print(occn)
+
+        # correct OCCN
+        marker_groups = {
+            "START_order": {
+                "omg": [
+                    [("o1", "order", (1, -1), 0)],
+                ],
+            },
+            "o1": {
+                "img": [
+                    [("START_order", "order", (1, -1), 0)],
+                ],
+                "omg": [
+                    [
+                        ("a", "order", (1, -1), 0),
+                    ],
+                ],
+            },
+            "a": {
+                "img": [
+                    [
+                        ("o1", "order", (1, 1), 0),
+                    ],
+                ],
+                "omg": [
+                    [
+                        ("o2", "order", (1, 1), 0),
+                    ],
+                ],
+            },
+            "o2": {
+                "img": [
+                    [("a", "order", (1, -1), 0)],
+                ],
+                "omg": [
+                    [
+                        ("END_order", "order", (1, -1), 0),
+                    ],
+                ],
+            },
+            "END_order": {
+                "img": [
+                    [("o2", "order", (1, -1), 0)],
+                ],
+            },
+        }
+
+        expected_occn = create_oc_causal_net(marker_groups)
+
+        print("\nExpected OCCN:")
+        print(expected_occn)
+
+        self.assertTrue(eq_no_keys(occn, expected_occn))
+
+    def test_conversion_marking(self):
+        name = "OCPN_marking"
+
         o1 = OCPetriNet.Place("o1", "order")
         o2 = OCPetriNet.Place("o2", "order")
-        
+
         a = OCPetriNet.Transition("a", "create_order")
-        
+
         a1 = OCPetriNet.Arc(o1, a, "order", is_variable=False)
         o1.add_out_arc(a1)
         a.add_in_arc(a1)
-        
+
         a2 = OCPetriNet.Arc(a, o2, "order", is_variable=False)
         a.add_out_arc(a2)
         o2.add_in_arc(a2)
-        
+
         initial_marking = OCMarking({("order1", o1): 1, ("order2", o2): 1})
         final_marking = OCMarking({("order1", o1): 1, ("order2", o2): 1})
-        
+
         ocpn = OCPetriNet(
             name,
             places=[o1, o2],
@@ -206,16 +251,71 @@ class OCPN_Test(unittest.TestCase):
             initial_marking=initial_marking,
             final_marking=final_marking,
         )
-        
+
         print("\n")
         print(ocpn)
         print("\nConverted OCCN:")
         occn = converter.apply(ocpn)
         print(occn)
-        
-        
 
-    def test_conversion_04(self):
+        # correct OCCN
+        marker_groups = {
+            "START_order": {
+                "omg": [
+                    [("o1", "order", (1, -1), 0), ("o2", "order", (1, -1), 0)],
+                ],
+            },
+            "o1": {
+                "img": [
+                    [("START_order", "order", (1, -1), 0)],
+                ],
+                "omg": [
+                    [
+                        ("a", "order", (1, -1), 0),
+                    ],
+                    [
+                        ("END_order", "order", (1, -1), 0),
+                    ],
+                ],
+            },
+            "a": {
+                "img": [
+                    [
+                        ("o1", "order", (1, 1), 0),
+                    ],
+                ],
+                "omg": [
+                    [
+                        ("o2", "order", (1, 1), 0),
+                    ],
+                ],
+            },
+            "o2": {
+                "img": [
+                    [("a", "order", (1, -1), 0)],
+                    [("START_order", "order", (1, -1), 0)],
+                ],
+                "omg": [
+                    [
+                        ("END_order", "order", (1, -1), 0),
+                    ],
+                ],
+            },
+            "END_order": {
+                "img": [
+                    [("o2", "order", (1, -1), 0), ("o1", "order", (1, -1), 0)],
+                ],
+            },
+        }
+
+        expected_occn = create_oc_causal_net(marker_groups)
+
+        print("\nExpected OCCN:")
+        print(expected_occn)
+
+        self.assertTrue(eq_no_keys(occn, expected_occn))
+
+    """def test_conversion_04(self):
         name = "OCPN_04"
         o1 = OCPetriNet.Place("o1", "order")
         o2 = OCPetriNet.Place("o2", "order")
@@ -353,17 +453,17 @@ class OCPN_Test(unittest.TestCase):
 
 def eq_no_keys(occn: OCCausalNet, other: OCCausalNet) -> bool:
     """
-    Checks if two Object-centic Causal Nets are equal. 
+    Checks if two Object-centic Causal Nets are equal.
     All keys are set to 0 before checking.
     Mutates the original nets.
-    
+
     Parameters
     ----------
     occn: OCCausalNet
         Object-centric Causal Net
     other: OCCausalNet
         Other Object-centric Causal Net
-        
+
     Returns
     ----------
     True if the `occn` == `other` after removing keys.
@@ -371,12 +471,14 @@ def eq_no_keys(occn: OCCausalNet, other: OCCausalNet) -> bool:
     # set all keys to 0
     for net in [occn, other]:
         for a in net.activities:
-            for marker_group in net.input_marker_groups.get(a, []) + net.output_marker_groups.get(a, []):
+            for marker_group in net.input_marker_groups.get(
+                a, []
+            ) + net.output_marker_groups.get(a, []):
                 for marker in marker_group.markers:
                     marker.marker_key = 0
     # compare
     return occn == other
-        
+
 
 if __name__ == "__main__":
     unittest.main()

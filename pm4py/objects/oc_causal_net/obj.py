@@ -148,7 +148,7 @@ class OCCausalNet(object):
         def __eq__(self, other):
             if isinstance(other, OCCausalNet.MarkerGroup):
                 return (
-                    self.markers == other.markers
+                    Counter(self.markers) == Counter(other.markers)
                     and self.support_count == other.support_count
                 )
             return False
