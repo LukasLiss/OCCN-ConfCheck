@@ -42,6 +42,7 @@ def apply(oc_causal_net, parameters=None, variant=Variants.TO_OCPN):
 
     Returns
     -----------
-    TODO
+    OCPetriNet
+        Object-centric Petri net converted from the Object-centric Causal Net
     """
     return exec_utils.get_variant(variant).apply(oc_causal_net, parameters=parameters)
