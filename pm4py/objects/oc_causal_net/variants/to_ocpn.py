@@ -824,12 +824,14 @@ def transform_output_key_group(
                 # for last marker, p_output_binding is used
                 p_b_o = (
                     p_output_binding
-                    if i == len(key_group[1]) - 2
+                    if i >= (len(key_group[1]) - 2)
                     else add_place(
                         OCPetriNet.Place(
                             name=f"p{BINDING_OBJECT_TYPE}#{silent_id}_{i + 2}",
                             object_type=BINDING_OBJECT_TYPE,
-                        )
+                        ),
+                        places,
+                        places_names,
                     )
                 )
         else:
@@ -839,8 +841,8 @@ def transform_output_key_group(
             # places
             px = add_place(
                 OCPetriNet.Place(
-                    name=f"p{BINDING_OBJECT_TYPE}#{silent_id}_X",
-                    object_type=BINDING_OBJECT_TYPE,
+                    name=f"p#{silent_id}_X",
+                    object_type=ot,
                 ),
                 places,
                 places_names,
@@ -873,6 +875,7 @@ def transform_output_key_group(
             p_a_o_ot = add_place(
                 OCPetriNet.Place(
                     name=label_activity_place(activity, False, ot),
+                    object_type=ot,
                 ),
                 places,
                 places_names,
@@ -1024,7 +1027,7 @@ def transform_marker(
 
     # 4 cases can occur
     if marker.min_count == 1 and marker.max_count == 1:
-        if is_output_marker and is_last_key_group and key_group_length != 1:
+        if is_output_marker and not is_last_key_group and key_group_length == 1:
             # case 1: (1,1) marker with duplication
             # places
             for p in [p_input, p_output, p_input_binding, p_output_binding]:
@@ -1167,7 +1170,7 @@ def transform_marker(
             )
     else:
         # marker with min_count != 1 or max_count != 1
-        if is_output_marker and is_last_key_group and key_group_length != 1:
+        if is_output_marker and not is_last_key_group and key_group_length == 1:
             # case 3: square marker with duplication
             # places
             px = OCPetriNet.Place(

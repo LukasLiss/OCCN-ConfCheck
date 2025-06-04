@@ -164,6 +164,8 @@ class OCCausalNetTest(unittest.TestCase):
         occn = create_oc_causal_net(marker_groups)
         print("\nTEST OCCN CONVERSION MULTI")
         print(occn)
+        ocpn = converter.apply(occn)
+        print(ocpn)
 
     def test_conversion_combined(self):
         marker_groups = {
@@ -193,6 +195,8 @@ class OCCausalNetTest(unittest.TestCase):
         occn = create_oc_causal_net(marker_groups)
         print("\nTEST OCCN CONVERSION COMBINED")
         print(occn)
+        ocpn = converter.apply(occn)
+        print(ocpn)
 
     def test_conversion_multi_marker(self):
         marker_groups = {
@@ -234,6 +238,8 @@ class OCCausalNetTest(unittest.TestCase):
         occn = create_oc_causal_net(marker_groups)
         print("\nTEST OCCN CONVERSION MULTI MARKER")
         print(occn)
+        ocpn = converter.apply(occn)
+        print(ocpn)
 
     def test_conversion_multi_square_marker(self):
         marker_groups = {
@@ -272,8 +278,10 @@ class OCCausalNetTest(unittest.TestCase):
         }
 
         occn = create_oc_causal_net(marker_groups)
-        print("\nTEST OCCN CONVERSION SQUARE MARKER")
+        print("\nTEST OCCN CONVERSION MULTI SQUARE MARKER")
         print(occn)
+        ocpn = converter.apply(occn)
+        print(ocpn)
 
     def test_conversion_triple_marker(self):
         marker_groups = {
@@ -329,6 +337,8 @@ class OCCausalNetTest(unittest.TestCase):
         occn = create_oc_causal_net(marker_groups)
         print("\nTEST OCCN CONVERSION TRIPLE MARKER")
         print(occn)
+        ocpn = converter.apply(occn)
+        print(ocpn)
 
     def test_conversion_key(self):
         marker_groups = {
@@ -384,6 +394,65 @@ class OCCausalNetTest(unittest.TestCase):
         occn = create_oc_causal_net(marker_groups)
         print("\nTEST OCCN CONVERSION KEY")
         print(occn)
+        ocpn = converter.apply(occn)
+        print(ocpn)
+        
+    def test_conversion_key_input(self):
+        marker_groups = {
+            "START_order": {
+                "img": [],
+                "omg": [
+                    [("a", "order", (1, -1), 0)],
+                ],
+            },
+            "a": {
+                "img": [
+                    [("START_order", "order", (1, -1), 0)],
+                ],
+                "omg": [
+                    [
+                        ("END_order", "order", (1, -1), 1),
+                        ("b", "order", (1, 1), 1),
+                        ("c", "order", (1, -1), 1),
+                    ],
+                ],
+            },
+            "b": {
+                "img": [
+                    [("a", "order", (1, 1), 0)],
+                ],
+                "omg": [
+                    [
+                        ("END_order", "order", (1, 1), 0),
+                    ],
+                ],
+            },
+            "c": {
+                "img": [
+                    [("a", "order", (1, -1), 0)],
+                ],
+                "omg": [
+                    [
+                        ("END_order", "order", (1, -1), 0),
+                    ],
+                ],
+            },
+            "END_order": {
+                "img": [
+                    [
+                        ("a", "order", (1, -1), 1),
+                        ("b", "order", (1, 1), 1),
+                        ("c", "order", (1, -1), 1),
+                    ],
+                ]
+            },
+        }
+
+        occn = create_oc_causal_net(marker_groups)
+        print("\nTEST OCCN CONVERSION KEY INPUT")
+        print(occn)
+        ocpn = converter.apply(occn)
+        print(ocpn)
 
     def test_conversion_key_order(self):
         marker_groups = {
@@ -439,61 +508,9 @@ class OCCausalNetTest(unittest.TestCase):
         occn = create_oc_causal_net(marker_groups)
         print("\nTEST OCCN CONVERSION KEY ORDER")
         print(occn)
+        ocpn = converter.apply(occn)
+        print(ocpn)
 
-    def test_conversion_key_order_square(self):
-        marker_groups = {
-            "START_order": {
-                "img": [],
-                "omg": [
-                    [("a", "order", (1, -1), 0)],
-                ],
-            },
-            "a": {
-                "img": [
-                    [("START_order", "order", (1, -1), 0)],
-                ],
-                "omg": [
-                    [
-                        ("END_order", "order", (1, -1), 1),
-                        ("b", "order", (1, -1), 0),
-                        ("c", "order", (1, -1), 1),
-                    ],
-                ],
-            },
-            "b": {
-                "img": [
-                    [("a", "order", (1, 1), 0)],
-                ],
-                "omg": [
-                    [
-                        ("END_order", "order", (1, 1), 0),
-                    ],
-                ],
-            },
-            "c": {
-                "img": [
-                    [("a", "order", (1, -1), 0)],
-                ],
-                "omg": [
-                    [
-                        ("END_order", "order", (1, -1), 0),
-                    ],
-                ],
-            },
-            "END_order": {
-                "img": [
-                    [
-                        ("a", "order", (1, -1), 0),
-                        ("b", "order", (1, 1), 0),
-                        ("c", "order", (1, -1), 0),
-                    ],
-                ]
-            },
-        }
-
-        occn = create_oc_causal_net(marker_groups)
-        print("\nTEST OCCN CONVERSION KEY ORDER SQUARE")
-        print(occn)
 
     def test_conversion_multi_key(self):
         marker_groups = {
@@ -553,6 +570,77 @@ class OCCausalNetTest(unittest.TestCase):
         occn = create_oc_causal_net(marker_groups)
         print("\nTEST OCCN CONVERSION MULTI KEY")
         print(occn)
+        ocpn = converter.apply(occn)
+        print(ocpn)
+        
+    def test_conversion_multi_key_2(self):
+        marker_groups = {
+            "START_order": {
+                "img": [],
+                "omg": [
+                    [("a", "order", (1, -1), 0)],
+                ],
+            },
+            "a": {
+                "img": [
+                    [("START_order", "order", (1, -1), 0)],
+                ],
+                "omg": [
+                    [
+                        ("END_order", "order", (1, -1), 1),
+                        ("b", "order", (1, 1), 2),
+                        ("c", "order", (1, -1), 1),
+                        ("d", "order", (1, 1), 2),
+                    ],
+                ],
+            },
+            "b": {
+                "img": [
+                    [("a", "order", (1, 1), 0)],
+                ],
+                "omg": [
+                    [
+                        ("END_order", "order", (1, 1), 0),
+                    ],
+                ],
+            },
+            "c": {
+                "img": [
+                    [("a", "order", (1, -1), 0)],
+                ],
+                "omg": [
+                    [
+                        ("END_order", "order", (1, -1), 0),
+                    ],
+                ],
+            },
+            "d": {
+                "img": [
+                    [("a", "order", (1, 1), 0)],
+                ],
+                "omg": [
+                    [
+                        ("END_order", "order", (1, 1), 0),
+                    ],
+                ],
+            },
+            "END_order": {
+                "img": [
+                    [
+                        ("a", "order", (1, -1), 0),
+                        ("b", "order", (1, 1), 0),
+                        ("c", "order", (1, -1), 0),
+                        ("d", "order", (1, 1), 0),
+                    ],
+                ]
+            },
+        }
+
+        occn = create_oc_causal_net(marker_groups)
+        print("\nTEST OCCN CONVERSION MULTI KEY 2")
+        print(occn)
+        ocpn = converter.apply(occn)
+        print(ocpn)
 
     def test_conversion_multi_ot(self):
         marker_groups = {
@@ -597,6 +685,8 @@ class OCCausalNetTest(unittest.TestCase):
         occn = create_oc_causal_net(marker_groups)
         print("\nTEST OCCN CONVERSION MULTI OT")
         print(occn)
+        ocpn = converter.apply(occn)
+        print(ocpn)
 
     def test_conversion_multi_ot_multi_marker(self):
         marker_groups = {
