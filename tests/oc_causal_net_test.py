@@ -737,6 +737,8 @@ class OCCausalNetTest(unittest.TestCase):
         occn = create_oc_causal_net(marker_groups)
         print("\nTEST OCCN CONVERSION MULTI OT MULTI MARKER")
         print(occn)
+        ocpn = converter.apply(occn)
+        print(ocpn)
 
     def test_conversion_ABC(self):
         marker_groups = {
@@ -780,6 +782,8 @@ class OCCausalNetTest(unittest.TestCase):
         occn = create_oc_causal_net(marker_groups)
         print("\nTEST OCCN CONVERSION ABC")
         print(occn)
+        ocpn = converter.apply(occn)
+        print(ocpn)
 
     def test_conversion_isolated(self):
         arcs = dict()
@@ -795,6 +799,8 @@ class OCCausalNetTest(unittest.TestCase):
 
         print("\nTEST OCCN CONVERSION ISOLATED")
         print(occn)
+        ocpn = converter.apply(occn)
+        print(ocpn)
 
 
 if __name__ == "__main__":

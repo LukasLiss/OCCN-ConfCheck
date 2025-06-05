@@ -392,7 +392,8 @@ def get_activity_object_types(object_types, input_marker_groups, output_marker_g
             object_type_group = matches[0] if matches else (object_type, [])
             
             object_type = object_type_group[0]
-            found_object_types.add(object_type)
+            if matches:
+                found_object_types.add(object_type)
             markers = [m for key_group in object_type_group[1] for m in key_group[1]]
             # non-variable object types have exactly one marker in its object type group and its cardinalities are (1,1)
             if not (
