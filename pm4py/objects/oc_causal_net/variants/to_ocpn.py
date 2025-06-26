@@ -81,6 +81,8 @@ def apply(occn: OCCausalNet, parameters=None) -> OCPetriNet:
         name=f"p{BINDING_OBJECT_TYPE}_global_input",
         object_type=BINDING_OBJECT_TYPE,
     )
+    
+    places.add(p_input_binding)
 
     # recursively create OCPN for every activity
     for activity in activities:
