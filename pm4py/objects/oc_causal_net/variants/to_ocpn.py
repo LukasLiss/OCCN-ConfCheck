@@ -158,9 +158,9 @@ def build_ordered_key_groups(activities, marker_groups):
         for i, marker_group in enumerate(key_groups[a]):
             for object_type in marker_group:
                 for marker_key in marker_group[object_type]:
-                    # sort markers by min_count and max_count, effectively putting markers with c=(1,1) first
+                    # sort markers by c=(1,1) and then by min_count and max_count
                     marker_group[object_type][marker_key].sort(
-                        key=lambda m: (m.min_count, m.max_count)
+                        key=lambda m: (m.min_count != 1, m.max_count != 1, m.min_count, m.max_count)
                     )
                 # sort key groups where key groups are ordered by the number of markers.
                 # Of the same number, key groups with more markers with c=(1,1) come first,
