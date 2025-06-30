@@ -109,6 +109,153 @@ class OCCausalNetTest(unittest.TestCase):
         occn = create_oc_causal_net(marker_groups)
         print("\nTEST OCCN CONSTRUCTOR 02")
         print(occn)
+        
+    def test_constructor_03(self):
+        marker_groups = {
+            "START_container": {
+                "omg": [
+                    [("c", "container", (1, 1), 0), ("i", "container", (1, 1), 0)],
+                ],
+            },
+            "c": {
+                "img": [
+                    [("START_container", "container", (1, 1), 0)],
+                ],
+                "omg": [
+                    [("e", "container", (1, 1), 0)],
+                ],
+            },
+            "i": {
+                "img": [
+                    [("START_container", "container", (1, 1), 0)],
+                ],
+                "omg": [
+                    [("e", "container", (1, 1), 0)],
+                ],
+            },
+            "e": {
+                "img": [
+                    [("c", "container", (1, 1), 0), ("i", "container", (1, 1), 0)],
+                ],
+                "omg": [
+                    [("s", "container", (1, 1), 0)],
+                ],
+            },
+            "START_order": {
+                "omg": [
+                    [("a", "order", (1, 1), 0)],
+                    [("b", "order", (1, 1), 0)],
+                ],
+            },
+            "a": {
+                "img": [
+                    [("START_order", "order", (1, 1), 0)],
+                ],
+                "omg": [
+                    [("b", "order", (1, 1), 0)],
+                ],
+            },
+            "b": {
+                "img": [
+                    [("START_order", "order", (1, 1), 0)],
+                    [("a", "order", (1, 1), 0)],
+                ],
+                "omg": [
+                    [("s", "order", (1, 1), 0)],
+                ],
+            },
+            "START_box": {
+                "omg": [
+                    [("d", "box", (1, 1), 0)],
+                ],
+            },
+            "d": {
+                "img": [
+                    [("START_box", "box", (1, 1), 0)],
+                ],
+                "omg": [
+                    [("s", "box", (1, 1), 0)],
+                ],
+            },
+            "s": {
+                "img": [
+                    [("e", "container", (1, 1), 0), ("b", "order", (1, -1), 0)],
+                    [("d", "box", (1, 1), 0), ("b", "order", (1, 1), 0)],
+                ],
+                "omg": [
+                    [("END_container", "container", (1, 1), 0), ("r", "order", (1, -1), 0)],
+                    [("END_box", "box", (1, 1), 0), ("r", "order", (1, 1), 0)],
+                ],
+            },
+            "END_container": {
+                "img": [
+                    [("s", "container", (1, 1), 0)],
+                ],
+            },
+            "END_box": {
+                "img": [
+                    [("s", "box", (1, 1), 0)],
+                ],
+            },
+            "r": {
+                "img": [
+                    [("s", "order", (1, 1), 0)],
+                    [("s", "order", (1, -1), 0)],
+                ],
+                "omg": [
+                    [("ti", "order", (1, 1), 1), ("si", "order", (0, -1), 1), ("da", "order", (1, 1), 2), ("ba", "order", (0, -1), 2)],
+                ],
+            },
+            "ti": {
+                "img": [
+                    [("r", "order", (1, 1), 0)],
+                ],
+                "omg": [
+                    [("END_order", "order", (1, 1), 0)],
+                ],
+            },
+            "si": {
+                "img": [
+                    [("r", "order", (1, -1), 0)],
+                ],
+                "omg": [
+                    [("END_order", "order", (1, -1), 0)],
+                ],
+            },
+            "da": {
+                "img": [
+                    [("r", "order", (1, 1), 0)],
+                ],
+                "omg": [
+                    [("END_order", "order", (1, 1), 0)],
+                ],
+            },
+            "ba": {
+                "img": [
+                    [("r", "order", (1, -1), 0)],
+                ],
+                "omg": [
+                    [("END_order", "order", (1, -1), 0)],
+                ],
+            },
+            "END_order": {
+                "img": [
+                    [("ti", "order", (1, 1), 0)],
+                    [("si", "order", (1, 1), 0)],
+                    [("da", "order", (1, 1), 0)],
+                    [("ba", "order", (1, 1), 0)],
+                ],
+            },
+        }
+
+        occn = create_oc_causal_net(marker_groups)
+        print("\nTEST OCCN CONSTRUCTOR 03")
+        print(occn)
+        
+        # also test exceptions of the conversion to OCPN (no test of correctness here)
+        ocpn = converter.apply(occn)
+        print(ocpn)
+        
 
     def test_conversion_basic(self):
         marker_groups = {
