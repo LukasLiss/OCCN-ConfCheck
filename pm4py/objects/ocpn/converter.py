@@ -19,12 +19,13 @@ visit <https://www.gnu.org/licenses/>.
 Website: https://processintelligence.solutions
 Contact: info@processintelligence.solutions
 '''
-from pm4py.objects.ocpn.variants import to_oc_causal_net
+from pm4py.objects.ocpn.variants import to_oc_causal_net, to_alternative_format
 from pm4py.util import exec_utils
 from enum import Enum
 
 class Variants(Enum):
     TO_OC_CAUSAL_NET = to_oc_causal_net
+    TO_ALTERNATIVE_FORMAT =  to_alternative_format
     
 def apply(ocpn, parameters=None, variant=Variants.TO_OC_CAUSAL_NET):
     """
@@ -34,14 +35,13 @@ def apply(ocpn, parameters=None, variant=Variants.TO_OC_CAUSAL_NET):
     -----------
     ocpn: OCPetriNet
         Object-centric Petri net
-    parameters
+    parameters: dict, optional
         Parameters of the algorithm
     variant
         Chosen variant of the algorithm
 
     Returns
     -----------
-    OCCausalNet
-        Object-centric Causal Net
+    Conversion result
     """
     return exec_utils.get_variant(variant).apply(ocpn, parameters=parameters)
