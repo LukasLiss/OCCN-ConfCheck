@@ -4826,6 +4826,476 @@ class OCCausalNetTest(unittest.TestCase):
 
         print(ocpn_expected)
         self.assertTrue(are_ocpn_equal_no_ids(ocpn, ocpn_expected))
+        
+    def test_conversion_multi_ot_multi_arc(self):
+        marker_groups = {
+            "START_order": {
+                "omg": [
+                    [("a", "order", (1, 1), 0)],
+                ],
+            },
+            "START_item": {
+                "omg": [
+                    [("a", "item", (1, -1), 0)],
+                ],
+            },
+            "a": {
+                "img": [
+                    [
+                        ("START_order", "order", (1, 1), 0),
+                        ("START_item", "item", (1, -1), 0),
+                    ],
+                ],
+                "omg": [
+                    [
+                        ("b", "order", (1, 1), 0),
+                        ("b", "item", (1, -1), 0),
+                    ],
+                ],
+            },
+            "b": {
+                "img": [
+                    [
+                        ("a", "order", (1, 1), 0),
+                        ("a", "item", (1, -1), 0),
+                    ],
+                ],
+                "omg": [
+                    [
+                        ("END_order", "order", (1, 1), 0),
+                        ("END_item", "item", (1, -1), 0),
+                    ],
+                ],
+            },
+            "END_order": {
+                "img": [
+                    [("b", "order", (1, 1), 0)],
+                ]
+            },
+            "END_item": {
+                "img": [
+                    [("b", "item", (1, -1), 0)],
+                ]
+            },
+        }
+
+        occn = create_oc_causal_net(marker_groups)
+        print("\nTEST OCCN CONVERSION MULTI OT MULTI ARC")
+        print(occn)
+        ocpn = converter.apply(occn)
+        print(ocpn)
+
+        # Expected OCPN:
+        # ---------------------------------------------------------------------
+        # Places
+        # ---------------------------------------------------------------------
+        place_specs = [
+            # item
+            ("p_END_item_i_item", "item"),
+            ("p_END_item_o_item", "item"),
+            ("p_START_item_i_item", "item"),
+            ("p_START_item_o_item", "item"),
+            ("p_a_i_item", "item"),
+            ("p_a_o_item", "item"),
+            ("p_b_i_item", "item"),
+            ("p_b_o_item", "item"),
+            ("p_arc(START_item,a)_item", "item"),
+            ("p_arc(a,b)_item", "item"),
+            ("p_arc(b,END_item)_item", "item"),
+            # order
+            ("p_END_order_i_order", "order"),
+            ("p_END_order_o_order", "order"),
+            ("p_START_order_i_order", "order"),
+            ("p_START_order_o_order", "order"),
+            ("p_a_i_order", "order"),
+            ("p_a_o_order", "order"),
+            ("p_b_i_order", "order"),
+            ("p_b_o_order", "order"),
+            ("p_arc(START_order,a)_order", "order"),
+            ("p_arc(a,b)_order", "order"),
+            ("p_arc(b,END_order)_order", "order"),
+            # _binding
+            ("p_binding#251_1", "_binding"),
+            ("p_binding#256_1", "_binding"),
+            ("p_binding#2512_1", "_binding"),
+            ("p_binding#2562_1", "_binding"),
+            ("p_binding#END_item_input", "_binding"),
+            ("p_binding#END_order_input", "_binding"),
+            ("p_binding#START_item_output", "_binding"),
+            ("p_binding#START_order_output", "_binding"),
+            ("p_binding#a_input", "_binding"),
+            ("p_binding#a_output", "_binding"),
+            ("p_binding#b_input", "_binding"),
+            ("p_binding#b_output", "_binding"),
+            ("p_binding_global_input", "_binding"),
+        ]
+
+        places = {name: OCPetriNet.Place(name, ot) for (name, ot) in place_specs}
+
+        # ---------------------------------------------------------------------
+        # Transitions
+        # ---------------------------------------------------------------------
+        transition_specs = [
+            ("END_item", "END_item"),
+            ("END_order", "END_order"),
+            ("START_item", "START_item"),
+            ("START_order", "START_order"),
+            ("_silent#250", None), # arc START_order to a
+            ("_silent#253", None), # p_a_i_item
+            ("_silent#255", None), # p_a_i_order
+            ("_silent#2532", None), # p_b_i_item
+            ("_silent#2552", None), # p_b_i_order
+            ("_silent#258", None), # p_arc(a,END_item)_item -> now b
+            ("_silent#260", None), # p_arc(a,END_order)_order -> now b
+            ("_silent#2582", None), # p_arc(b,END_item)_item
+            ("_silent#2602", None), # p_arc(b,END_order)_order
+            ("_silent#263", None), # p_arc(START_item,a)_item
+            ("_silent#266", None), # p_END_order_i_order
+            ("_silent#269", None), # p_END_item_i_item
+            ("a", "a"),
+            ("b", "b"),
+        ]
+
+        transitions = {
+            name: OCPetriNet.Transition(name, label)
+            for (name, label) in transition_specs
+        }
+
+        # ---------------------------------------------------------------------
+        # Arcs
+        # ---------------------------------------------------------------------
+        arcs = []
+
+        # --- transitions to places ---
+        connect(
+            transitions["END_item"],
+            places["p_END_item_o_item"],
+            "item",
+            arcs,
+            is_variable=True,
+        )
+        connect(
+            transitions["END_item"], places["p_binding_global_input"], "_binding", arcs
+        )
+        connect(transitions["END_order"], places["p_END_order_o_order"], "order", arcs)
+        connect(
+            transitions["END_order"], places["p_binding_global_input"], "_binding", arcs
+        )
+        connect(
+            transitions["START_item"],
+            places["p_START_item_o_item"],
+            "item",
+            arcs,
+            is_variable=True,
+        )
+        connect(
+            transitions["START_item"],
+            places["p_binding#START_item_output"],
+            "_binding",
+            arcs,
+        )
+        connect(
+            transitions["START_order"], places["p_START_order_o_order"], "order", arcs
+        )
+        connect(
+            transitions["START_order"],
+            places["p_binding#START_order_output"],
+            "_binding",
+            arcs,
+        )
+        connect(
+            transitions["_silent#250"],
+            places["p_arc(START_order,a)_order"],
+            "order",
+            arcs,
+        )
+        connect(
+            transitions["_silent#250"],
+            places["p_binding_global_input"],
+            "_binding",
+            arcs,
+        )
+        connect(
+            transitions["_silent#253"],
+            places["p_a_i_item"],
+            "item",
+            arcs,
+            is_variable=True,
+        )
+        connect(
+            transitions["_silent#2532"],
+            places["p_b_i_item"],
+            "item",
+            arcs,
+            is_variable=True,
+        )
+        connect(transitions["_silent#253"], places["p_binding#251_1"], "_binding", arcs)
+        connect(transitions["_silent#2532"], places["p_binding#2512_1"], "_binding", arcs)
+        connect(transitions["_silent#255"], places["p_a_i_order"], "order", arcs)
+        connect(transitions["_silent#2552"], places["p_b_i_order"], "order", arcs)
+        connect(
+            transitions["_silent#255"], places["p_binding#a_input"], "_binding", arcs
+        )
+        connect(
+            transitions["_silent#2552"], places["p_binding#b_input"], "_binding", arcs
+        )
+        connect(
+            transitions["_silent#258"],
+            places["p_arc(a,b)_item"],
+            "item",
+            arcs,
+            is_variable=True,
+        )
+        connect(
+            transitions["_silent#2582"],
+            places["p_arc(b,END_item)_item"],
+            "item",
+            arcs,
+            is_variable=True,
+        )
+        connect(transitions["_silent#258"], places["p_binding#256_1"], "_binding", arcs)
+        connect(transitions["_silent#2582"], places["p_binding#2562_1"], "_binding", arcs)
+        connect(
+            transitions["_silent#260"],
+            places["p_arc(a,b)_order"],
+            "order",
+            arcs,
+        )
+        connect(
+            transitions["_silent#2602"],
+            places["p_arc(b,END_order)_order"],
+            "order",
+            arcs,
+        )
+        connect(
+            transitions["_silent#260"],
+            places["p_binding_global_input"],
+            "_binding",
+            arcs,
+        )
+        connect(
+            transitions["_silent#2602"],
+            places["p_binding_global_input"],
+            "_binding",
+            arcs,
+        )
+        connect(
+            transitions["_silent#263"],
+            places["p_arc(START_item,a)_item"],
+            "item",
+            arcs,
+            is_variable=True,
+        )
+        connect(
+            transitions["_silent#263"],
+            places["p_binding_global_input"],
+            "_binding",
+            arcs,
+        )
+        connect(
+            transitions["_silent#266"], places["p_END_order_i_order"], "order", arcs
+        )
+        connect(
+            transitions["_silent#266"],
+            places["p_binding#END_order_input"],
+            "_binding",
+            arcs,
+        )
+        connect(
+            transitions["_silent#269"],
+            places["p_END_item_i_item"],
+            "item",
+            arcs,
+            is_variable=True,
+        )
+        connect(
+            transitions["_silent#269"],
+            places["p_binding#END_item_input"],
+            "_binding",
+            arcs,
+        )
+        connect(transitions["a"], places["p_a_o_item"], "item", arcs, is_variable=True)
+        connect(transitions["a"], places["p_a_o_order"], "order", arcs)
+        connect(transitions["a"], places["p_binding#a_output"], "_binding", arcs)
+        connect(transitions["b"], places["p_b_o_item"], "item", arcs, is_variable=True)
+        connect(transitions["b"], places["p_b_o_order"], "order", arcs)
+        connect(transitions["b"], places["p_binding#b_output"], "_binding", arcs)
+
+        # --- places to transitions ---
+        connect(
+            places["p_END_item_i_item"],
+            transitions["END_item"],
+            "item",
+            arcs,
+            is_variable=True,
+        )
+        connect(places["p_END_order_i_order"], transitions["END_order"], "order", arcs)
+        connect(
+            places["p_START_item_i_item"],
+            transitions["START_item"],
+            "item",
+            arcs,
+            is_variable=True,
+        )
+        connect(
+            places["p_START_item_o_item"],
+            transitions["_silent#263"],
+            "item",
+            arcs,
+            is_variable=True,
+        )
+        connect(
+            places["p_START_order_i_order"], transitions["START_order"], "order", arcs
+        )
+        connect(
+            places["p_START_order_o_order"], transitions["_silent#250"], "order", arcs
+        )
+        connect(places["p_a_i_item"], transitions["a"], "item", arcs, is_variable=True)
+        connect(places["p_a_i_order"], transitions["a"], "order", arcs)
+        connect(places["p_b_i_item"], transitions["b"], "item", arcs, is_variable=True)
+        connect(places["p_b_i_order"], transitions["b"], "order", arcs)
+        connect(
+            places["p_a_o_item"],
+            transitions["_silent#258"],
+            "item",
+            arcs,
+            is_variable=True,
+        )
+        connect(places["p_a_o_order"], transitions["_silent#260"], "order", arcs)
+        connect(
+            places["p_b_o_item"],
+            transitions["_silent#2582"],
+            "item",
+            arcs,
+            is_variable=True,
+        )
+        connect(places["p_b_o_order"], transitions["_silent#2602"], "order", arcs)
+        connect(
+            places["p_arc(START_item,a)_item"],
+            transitions["_silent#253"],
+            "item",
+            arcs,
+            is_variable=True,
+        )
+        connect(
+            places["p_arc(START_order,a)_order"],
+            transitions["_silent#255"],
+            "order",
+            arcs,
+        )
+        connect(
+            places["p_arc(a,b)_item"],
+            transitions["_silent#2532"],
+            "item",
+            arcs,
+            is_variable=True,
+        )
+        connect(
+            places["p_arc(b,END_item)_item"],
+            transitions["_silent#269"],
+            "item",
+            arcs,
+            is_variable=True,
+        )
+        connect(
+            places["p_arc(a,b)_order"],
+            transitions["_silent#2552"],
+            "order",
+            arcs,
+        )
+        connect(
+            places["p_arc(b,END_order)_order"],
+            transitions["_silent#266"],
+            "order",
+            arcs,
+        )
+        connect(places["p_binding#251_1"], transitions["_silent#255"], "_binding", arcs)
+        connect(places["p_binding#256_1"], transitions["_silent#260"], "_binding", arcs)
+        connect(places["p_binding#2512_1"], transitions["_silent#2552"], "_binding", arcs)
+        connect(places["p_binding#2562_1"], transitions["_silent#2602"], "_binding", arcs)
+        connect(
+            places["p_binding#END_item_input"],
+            transitions["END_item"],
+            "_binding",
+            arcs,
+        )
+        connect(
+            places["p_binding#END_order_input"],
+            transitions["END_order"],
+            "_binding",
+            arcs,
+        )
+        connect(
+            places["p_binding#START_item_output"],
+            transitions["_silent#263"],
+            "_binding",
+            arcs,
+        )
+        connect(
+            places["p_binding#START_order_output"],
+            transitions["_silent#250"],
+            "_binding",
+            arcs,
+        )
+        connect(places["p_binding#a_input"], transitions["a"], "_binding", arcs)
+        connect(places["p_binding#b_input"], transitions["b"], "_binding", arcs)
+        connect(
+            places["p_binding#a_output"], transitions["_silent#258"], "_binding", arcs
+        )
+        connect(
+            places["p_binding#b_output"], transitions["_silent#2582"], "_binding", arcs
+        )
+        connect(
+            places["p_binding_global_input"],
+            transitions["START_item"],
+            "_binding",
+            arcs,
+        )
+        connect(
+            places["p_binding_global_input"],
+            transitions["START_order"],
+            "_binding",
+            arcs,
+        )
+        connect(
+            places["p_binding_global_input"],
+            transitions["_silent#253"],
+            "_binding",
+            arcs,
+        )
+        connect(
+            places["p_binding_global_input"],
+            transitions["_silent#2532"],
+            "_binding",
+            arcs,
+        )
+        connect(
+            places["p_binding_global_input"],
+            transitions["_silent#266"],
+            "_binding",
+            arcs,
+        )
+        connect(
+            places["p_binding_global_input"],
+            transitions["_silent#269"],
+            "_binding",
+            arcs,
+        )
+
+        # ---------------------------------------------------------------------
+        # Assemble the net
+        # ---------------------------------------------------------------------
+        ocpn_expected = OCPetriNet(
+            name="Expected OCPN",
+            places=list(places.values()),
+            transitions=list(transitions.values()),
+            arcs=arcs,
+            initial_marking=None,
+            final_marking=None,
+        )
+
+        print(ocpn_expected)
+        self.assertTrue(are_ocpn_equal_no_ids(ocpn, ocpn_expected))
 
     def test_conversion_multi_ot_multi_marker(self):
         marker_groups = {
