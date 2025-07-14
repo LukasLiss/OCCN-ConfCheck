@@ -541,6 +541,187 @@ class OCPN_Test(unittest.TestCase):
         print(expected_occn)
 
         self.assertTrue(eq_no_keys(occn, expected_occn))
+        
+    def test_conversion_multi_variable_2(self):
+        name = "OCPN_multi_variable"
+
+        p1 = OCPetriNet.Place("p1", "order")
+        p2 = OCPetriNet.Place("p2", "order")
+        p3 = OCPetriNet.Place("p3", "order")
+        p4 = OCPetriNet.Place("p4", "box")
+        p5 = OCPetriNet.Place("p5", "box")
+        p6 = OCPetriNet.Place("p6", "box")
+
+        a = OCPetriNet.Transition("a", "create_order")
+
+        a1 = OCPetriNet.Arc(p1, a, "order", is_variable=True)
+        p1.add_out_arc(a1)
+        a.add_in_arc(a1)
+
+        a2 = OCPetriNet.Arc(a, p2, "order", is_variable=True)
+        a.add_out_arc(a2)
+        p2.add_in_arc(a2)
+
+        a3 = OCPetriNet.Arc(a, p3, "order", is_variable=True)
+        a.add_out_arc(a3)
+        p3.add_in_arc(a3)
+        
+        a4 = OCPetriNet.Arc(p4, a, "box", is_variable=True)
+        p4.add_out_arc(a4)
+        a.add_in_arc(a4)
+        
+        a5 = OCPetriNet.Arc(a, p5, "box", is_variable=True)
+        a.add_out_arc(a5)
+        p5.add_in_arc(a5)
+        
+        a6 = OCPetriNet.Arc(a, p6, "box", is_variable=True)
+        a.add_out_arc(a6)
+        p6.add_in_arc(a6)
+
+
+
+        initial_marking = OCMarking({("order1", p1): 1, ("box1", p4): 1})
+        final_marking = OCMarking({("order1", p2): 1, ("order1", p3): 1, ("box1", p5): 1, ("box1", p6): 1})
+
+        ocpn = OCPetriNet(
+            name,
+            places=[p1, p2, p3, p4, p5, p6],
+            transitions=[a],
+            arcs=[a1, a2, a3, a4, a5, a6],
+            initial_marking=initial_marking,
+            final_marking=final_marking,
+        )
+
+        print("\n")
+        print(ocpn)
+        print("\nConverted OCCN:")
+        occn = converter.apply(ocpn)
+        print(occn)
+
+        # correct OCCN
+        marker_groups = {
+            "START_order": {
+                "omg": [
+                    [("p1", "order", (1, -1), 0)],
+                ],
+            },
+            "p1": {
+                "img": [
+                    [("START_order", "order", (1, -1), 0)],
+                ],
+                "omg": [
+                    [
+                        ("a", "order", (1, -1), 0),
+                    ],
+                ],
+            },
+            "START_box": {
+                "omg": [
+                    [("p4", "box", (1, -1), 0)],
+                ],
+            },
+            "p4": {
+                "img": [
+                    [("START_box", "box", (1, -1), 0)],
+                ],
+                "omg": [
+                    [
+                        ("a", "box", (1, -1), 0),
+                    ],
+                ],
+            },
+            "a": {
+                "img": [
+                    [("p1", "order", (0, -1), 0),
+                     ("p4", "box", (0, -1), 0)],
+                ],
+                "omg": [
+                    [
+                        ("_silent_aux_a_order", "order", (0, -1), 0),
+                        ("_silent_aux_a_box", "box", (0, -1), 0),
+                    ],
+                ],
+            },
+            "_silent_aux_a_order": {
+                "img": [
+                    [("a", "order", (1, 1), 0)],
+                ],
+                "omg": [
+                    [
+                        ("p2", "order", (1, 1), 0),
+                        ("p3", "order", (1, 1), 0),
+                    ],
+                ],
+            },
+            "p2": {
+                "img": [
+                    [("_silent_aux_a_order", "order", (1, -1), 0)],
+                ],
+                "omg": [
+                    [
+                        ("END_order", "order", (1, -1), 0),
+                    ],
+                ],
+            },
+            "p3": {
+                "img": [
+                    [("_silent_aux_a_order", "order", (1, -1), 0)],
+                ],
+                "omg": [
+                    [
+                        ("END_order", "order", (1, -1), 0),
+                    ],
+                ],
+            },
+            "END_order": {
+                "img": [
+                    [("p2", "order", (1, -1), 0), ("p3", "order", (1, -1), 0)],
+                ],
+            },
+            "_silent_aux_a_box": {
+                "img": [
+                    [("a", "box", (1, 1), 0)],
+                ],
+                "omg": [
+                    [
+                        ("p5", "box", (1, 1), 0),
+                        ("p6", "box", (1, 1), 0),
+                    ],
+                ],
+            },
+            "p5": {
+                "img": [
+                    [("_silent_aux_a_box", "box", (1, -1), 0)],
+                ],
+                "omg": [
+                    [
+                        ("END_box", "box", (1, -1), 0),
+                    ],
+                ],
+            },
+            "p6": {
+                "img": [
+                    [("_silent_aux_a_box", "box", (1, -1), 0)],
+                ],
+                "omg": [
+                    [
+                        ("END_box", "box", (1, -1), 0),
+                    ],
+                ],
+            },
+            "END_box": {
+                "img": [
+                    [("p5", "box", (1, -1), 0), ("p6", "box", (1, -1), 0)],
+                ],
+            },
+        }
+
+        expected_occn = create_oc_causal_net(marker_groups)
+
+        print("\nExpected OCCN:")
+        print(expected_occn)
+
+        self.assertTrue(eq_no_keys(occn, expected_occn))
 
     def test_conversion_big(self):
         name = "OCPN_big"
