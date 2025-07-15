@@ -31,8 +31,8 @@ class OCPN_Test(unittest.TestCase):
         p3.add_in_arc(a3)
         p4.add_in_arc(a4)
 
-        initial_marking = OCMarking({("o1", p1): 1, ("o2", p2): 1, ("o3", p2): 1})
-        final_marking = OCMarking({("o1", p3): 1, ("o2", p4): 1, ("o3", p4): 1})
+        initial_marking = OCMarking({p1: {"o1"}, p2: {"o2", "o3"}})
+        final_marking = OCMarking({p3: {"o1"}, p4: {"o2", "o3"}})
 
         ocpn = OCPetriNet(
             name,
@@ -150,8 +150,8 @@ class OCPN_Test(unittest.TestCase):
         a.add_out_arc(a2)
         o2.add_in_arc(a2)
 
-        initial_marking = OCMarking({("order1", o1): 1})
-        final_marking = OCMarking({("order1", o2): 1})
+        initial_marking = OCMarking({o1: {"order1"}})
+        final_marking = OCMarking({o2: {"order1"}})
 
         ocpn = OCPetriNet(
             name,
@@ -247,8 +247,8 @@ class OCPN_Test(unittest.TestCase):
         a.add_out_arc(a4)
         o4.add_in_arc(a4)
 
-        initial_marking = OCMarking({("order1", o1): 1, ("order2", o3): 1})
-        final_marking = OCMarking({("order1", o2): 1, ("order2", o4): 1})
+        initial_marking = OCMarking({o1: {"order1"}, o3: {"order2"}})
+        final_marking = OCMarking({o2: {"order1"}, o4: {"order2"}})
 
         ocpn = OCPetriNet(
             name,
@@ -356,8 +356,8 @@ class OCPN_Test(unittest.TestCase):
         a.add_out_arc(a2)
         o2.add_in_arc(a2)
 
-        initial_marking = OCMarking({("order1", o1): 1, ("order2", o2): 1})
-        final_marking = OCMarking({("order1", o1): 1, ("order2", o2): 1})
+        initial_marking = OCMarking({o1: {"order1"}, o2: {"order2"}})
+        final_marking = OCMarking({o1: {"order1"}, o2: {"order2"}})
 
         ocpn = OCPetriNet(
             name,
@@ -452,8 +452,8 @@ class OCPN_Test(unittest.TestCase):
         a.add_out_arc(a3)
         p3.add_in_arc(a3)
 
-        initial_marking = OCMarking({("order1", p1): 1})
-        final_marking = OCMarking({("order1", p2): 1, ("order1", p3): 1})
+        initial_marking = OCMarking({p1: {"order1"}})
+        final_marking = OCMarking({p2: {"order1"}, p3: {"order1"}})
 
         ocpn = OCPetriNet(
             name,
@@ -580,8 +580,8 @@ class OCPN_Test(unittest.TestCase):
 
 
 
-        initial_marking = OCMarking({("order1", p1): 1, ("box1", p4): 1})
-        final_marking = OCMarking({("order1", p2): 1, ("order1", p3): 1, ("box1", p5): 1, ("box1", p6): 1})
+        initial_marking = OCMarking({p1: {"order1"}, p4: {"box1"}})
+        final_marking = OCMarking({p2: {"order1"}, p3: {"order1"}, p5: {"box1"}, p6: {"box1"}})
 
         ocpn = OCPetriNet(
             name,
@@ -817,12 +817,8 @@ class OCPN_Test(unittest.TestCase):
         co.add_out_arc(a18)
         i5.add_in_arc(a18)
 
-        initial_marking = OCMarking(
-            {("order1", o1): 1, ("item1", i1): 1, ("item2", i1): 1}
-        )
-        final_marking = OCMarking(
-            {("order1", o5): 1, ("item1", i5): 1, ("item2", i5): 1}
-        )
+        initial_marking = OCMarking({o1: {"order1"}, i1: {"item1", "item2"}})
+        final_marking = OCMarking({o5: {"order1"}, i5: {"item1", "item2"}})
 
         ocpn = OCPetriNet(
             name,

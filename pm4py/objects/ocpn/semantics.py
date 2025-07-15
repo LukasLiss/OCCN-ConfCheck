@@ -1,0 +1,312 @@
+"""
+    PM4Py – A Process Mining Library for Python
+Copyright (C) 2024 Process Intelligence Solutions UG (haftungsbeschränkt)
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as
+published by the Free Software Foundation, either version 3 of the
+License, or any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with this program.  If not, see this software project's root or
+visit <https://www.gnu.org/licenses/>.
+
+Website: https://processintelligence.solutions
+Contact: info@processintelligence.solutions
+"""
+
+from collections import defaultdict
+import copy
+from itertools import chain, combinations
+from typing import Counter, Generic, TypeVar, Dict, Set, FrozenSet, Tuple, Iterator
+from pm4py.objects.ocpn.obj import OCPetriNet, OCMarking
+from pm4py.objects.ocpn.utils.ocpn_utils import pre_set
+
+N = TypeVar("N", bound=OCPetriNet)
+T = TypeVar("T", bound=OCPetriNet.Transition)
+P = TypeVar("P", bound=OCPetriNet.Place)
+
+
+class OCPetriNetSemantics(Generic[N]):
+
+    @classmethod
+    def is_enabled(cls, pn: N, transition: T, marking: OCMarking) -> bool:
+        """
+        Checks whether a given transition is enabled in a given object-centric Petri net and marking.
+        A transition is enabled if every non-variable arc has at least one object in the corresponding place,
+        and at least one arc can consume a token.
+
+        Parameters
+        ----------
+        net
+            object-centric Petri net
+        transition
+            transition to check
+        marking
+            marking to check
+
+        Returns
+        -------
+        bool
+            true if enabled, false otherwise
+        """
+        if transition not in pn.transitions:
+            return False
+        
+        any_enabled = False
+        for a in transition.in_arcs:
+            if marking[a.source] == Counter():
+                if not a.is_variable:
+                    return False
+            else:
+                any_enabled = True
+        return any_enabled
+
+    @classmethod
+    def fire(
+        cls, pn: N, transition: T, marking: OCMarking, objects: Dict[str, Set]
+    ) -> OCMarking:
+        """
+        Execute a transition for a given set of objects per object type
+        For performance reasons, this function does not check if the transition is enabled or binding passed set of objects is valid, i.e.,
+        this should be performed by the invoking algorithm (if needed). Hence, markings can become negative.
+
+        Parameters
+        ----------
+        pn
+            object-centric Petri net
+        transition
+            transition to execute
+        marking
+            marking to use
+        objects
+            dict of objects per object type, e.g., {"order": {"order1", "order2"}}
+
+        Returns
+        -------
+        OCMarking
+            newly reached marking
+        """
+        m_out = copy.copy(marking)
+        for a in transition.in_arcs:
+            obj_count = objects.get(a.object_type, set())
+            m_out[a.source] -= Counter(obj_count)
+        for a in transition.out_arcs:
+            obj_count = objects.get(a.object_type, set())
+            m_out[a.target] += Counter(obj_count)
+        return m_out
+
+    @classmethod
+    def enabled_transitions(
+        cls, pn: N, marking: OCMarking
+    ) -> Set[T]:
+        """
+        Returns the enabled transitions in a given object-centric Petri net and marking
+
+        Parameters
+        ----------
+        net
+            object-centric Petri net
+        marking
+            marking to check
+
+        Returns
+        -------
+        Set[T]
+            Set of enabled transitions
+        """
+        return {t for t in pn.transitions if cls.is_enabled(pn, t, marking)}
+
+    @classmethod
+    def get_possible_bindings(
+        cls, pn: N, transition: T, marking: OCMarking
+    ) -> Iterator[Dict[str, Set]]:
+        """
+        Returns an Iterator on the possible bindings for a given transition 
+        in a given object-centric Petri net and marking. 
+
+        Parameters
+        ----------
+        net
+            object-centric Petri net
+        transition
+            transition to check
+        marking
+            marking to check
+
+        Returns
+        -------
+        Iterator[Dict[str, Set]]
+            Iterator on all possible bindings (key is object type, value is a set of objects)
+        """
+
+        def get_common_objects(places: Set[P], marking: OCMarking) -> Set:
+            """
+            Get the intersection of objects in a set of places for the given marking.
+
+            The resulting set contains objects present in ALL specified places.
+
+            Parameters
+            ----------
+            places
+                Set of places to consider
+            marking
+                Marking to consider
+
+            Returns
+            -------
+            Set
+                Set containing the common objects
+            """
+            if not places:
+                return set()
+
+            # iter to avoid treating the first place as a special case
+            places_iter = iter(places)
+
+            result_counter = marking[next(places_iter)].copy()
+
+            for place in places_iter:
+                if not result_counter:
+                    break
+                # intersect with the current place's objects
+                result_counter &= marking[place]
+
+            return set(result_counter)
+
+        def get_powerset(object_type: str, objects: Set) -> Set[FrozenSet[Tuple]]:
+            """
+            Generate the powerset of a set of objects in the form (object_type, object_id).
+
+            Parameters
+            ----------
+            object_type
+                The type of the objects
+            objects
+                Set of objects to generate the powerset for
+
+            Returns
+            -------
+            Set[FrozenSet[Tuple]]
+                Set of frozen sets representing the powerset of the input set
+            """
+            items = [(object_type, obj_id) for obj_id in objects]
+            powerset_iterator = chain.from_iterable(
+                combinations(items, r) for r in range(len(items) + 1)
+            )
+            return {frozenset(subset) for subset in powerset_iterator}
+
+        def recursive_bindings(
+            variable_object_types: Set[str],
+            non_variable_object_types: Set[str],
+            available_objects: Dict[str, Set],
+        ) -> Set[FrozenSet[Tuple]]:
+            """
+            Recursively generate all possible bindings given the remaining object types and available objects.
+
+            Parameters
+            ----------
+            variable_object_types
+                Set of variable object types to consider
+            non_variable_object_types
+                Set of non-variable object types to consider
+            available_objects
+                Dictionary where keys are object types and values are sets of available objects for that type
+
+            Returns
+            -------
+            Set[FrozenSet[Tuple]]
+                Set of possible bindings (as frozen sets of tuples (object_type, object_id))
+            """
+            # Base case
+            if not non_variable_object_types and not variable_object_types:
+                # empty binding
+                return {frozenset()} 
+        
+            # Recursive case
+            # Pick next object type to process. Non-variable object types are processed first.
+            is_variable = not non_variable_object_types
+            types_to_process = variable_object_types if is_variable else non_variable_object_types
+            ot = types_to_process.pop()
+            
+            try:
+                ot_objects = available_objects.get(ot, set())
+                
+                # Get all possible object combinations for this object type
+                if is_variable:
+                    # For variable object types, we can pick 0-all objects (powerset)
+                    current_options = get_powerset(ot, ot_objects)
+                else:
+                    # For non-variable object types, we must pick exactly one object
+                    current_options = {frozenset({(ot, obj)}) for obj in ot_objects}
+                    # No options -> no bindings possible
+                    if not current_options:
+                        return set()
+                    
+                # Recursively get bindings for the remaining object types
+                sub_bindings = recursive_bindings(
+                    variable_object_types,
+                    non_variable_object_types,
+                    available_objects,
+                )
+                
+                # cross product current options with sub-bindings
+                bindings = {
+                    sub_binding.union(option)
+                    for option in current_options
+                    for sub_binding in sub_bindings
+                }
+                
+                return bindings
+                
+            finally:
+                # restore the set of object types
+                types_to_process.add(ot)
+
+
+        if transition not in pn.transitions:
+            # no binding to yield
+            return
+
+        # get object types involved in t and whether they are variable
+        non_variable_object_types = set()
+        variable_object_types = set()
+        for a in transition.in_arcs:
+            if a.is_variable:
+                variable_object_types.add(a.object_type)
+            else:
+                non_variable_object_types.add(a.object_type)
+
+        # get predecessor places per object type
+        predecessors = {
+            ot: pre_set(transition, ot)
+            for ot in non_variable_object_types | variable_object_types
+        }
+
+        # per ot, get objects present in all predecessor places
+        common_objects = {
+            ot: get_common_objects(predecessors[ot], marking)
+            for ot in non_variable_object_types | variable_object_types
+        }
+
+        # get bindings
+        frozenset_bindings = recursive_bindings(
+            variable_object_types, non_variable_object_types, common_objects
+        )
+        
+        # Loop through immutable bindings and yield dictionary one by one
+        for fs_binding in frozenset_bindings:
+            # do not yield the empty binding
+            if not fs_binding:
+                continue
+            
+            binding_dict = defaultdict(set)
+            for ot, obj in fs_binding:
+                binding_dict[ot].add(obj)
+                
+            yield binding_dict
