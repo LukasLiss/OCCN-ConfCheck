@@ -31,7 +31,13 @@ class OCMarking(defaultdict):
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         """Initializes the OCMarking, querying unspecified places defaults to an empty multiset."""
-        super().__init__(Counter, *args, **kwargs)
+        super().__init__(Counter)
+        data_args = args
+        if args and args[0] is Counter:
+            data_args = args[1:]
+        initial_data = dict(*data_args, **kwargs)
+        for place, objects in initial_data.items():
+            self[place] = Counter(objects)
 
     def __hash__(self):
         return frozenset(
@@ -218,6 +224,7 @@ class OCPetriNet(PetriNet):
             """
             self.__out_arcs.add(arc)
             assert arc.source == self
+            
 
     class Arc(PetriNet.Arc):
         def __init__(
