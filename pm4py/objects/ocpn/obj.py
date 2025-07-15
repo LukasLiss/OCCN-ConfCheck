@@ -224,7 +224,6 @@ class OCPetriNet(PetriNet):
             source,
             target,
             object_type,
-            weight=1,
             is_variable=False,
             properties=None,
         ):
@@ -237,14 +236,12 @@ class OCPetriNet(PetriNet):
                 source place / transition
             target
                 target place / transition
-            weight
-                weight of the arc
             is_variable
                 whether the arc is a variable arc
             properties
                 dict of additional properties
             """
-            super().__init__(source, target, weight=weight, properties=properties)
+            super().__init__(source, target, weight=1, properties=properties)
             self.__object_type = object_type
             self.__is_variable = is_variable
 
