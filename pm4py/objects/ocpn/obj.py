@@ -78,11 +78,12 @@ class OCMarking(defaultdict):
     def __repr__(self):
         # e.g.  ["p1:{o1, o2}", "p2: {o2, o3}", …]
         sorted_entries = sorted(self.items(), key=lambda item: item[0].name)
-        return ", ".join(
-                f"{place.name}: {objects}"
-                for (place, objects) in sorted_entries
-            ) if sorted_entries else "[]"
-            
+        return (
+            ", ".join(f"{place.name}: {objects}" for (place, objects) in sorted_entries)
+            if sorted_entries
+            else "[]"
+        )
+
     def __str__(self):
         return self.__repr__()
 
@@ -317,6 +318,7 @@ class OCPetriNet(PetriNet):
         )
         self.__initial_marking = initial_marking
         self.__final_marking = final_marking
+        self.__assert_well_formed()
 
     def __get_initial_marking(self):
         return self.__initial_marking
@@ -388,6 +390,22 @@ class OCPetriNet(PetriNet):
 
     def __str__(self):
         return self.__repr__()
+
+    def __assert_well_formed(self):
+        """
+        Asserts that the OCPN is well-formed, i.e., all transitions have,
+        for each object type, only either variable or non-variable arcs, but not both.
+        """
+        for t in self.transitions:
+            for ot in self.object_types:
+                var_arcs = {
+                    a for a in t.in_arcs if a.is_variable and a.object_type == ot
+                }
+                non_var_arcs = {
+                    a for a in t.in_arcs if not a.is_variable and a.object_type == ot
+                }
+                if var_arcs and non_var_arcs:
+                    raise ValueError(f"Transition {t} is not well-formed.")
 
     initial_marking = property(__get_initial_marking)
     final_marking = property(__get_final_marking)
