@@ -20,71 +20,89 @@ Website: https://processintelligence.solutions
 Contact: info@processintelligence.solutions
 """
 
-from collections import Counter
+from collections import Counter, defaultdict
 from copy import deepcopy
 from typing import Collection, Dict, Any, Set
 from pm4py.objects.petri_net.obj import PetriNet
 
 
-class OCMarking(Counter):
-    """An object-centric marking is a multiset of (object_id, place) pairs.
+class OCMarking(defaultdict):
+    """An object-centric marking represented as a mapping from places to multisets of object IDs."""
 
-    Keys are tuples (object_id, place) and values are integer multiplicities.
-    """
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        """Initializes the OCMarking, querying unspecified places defaults to an empty multiset."""
+        super().__init__(Counter, *args, **kwargs)
 
     def __hash__(self):
-        # include counts in the hash
-        return frozenset(self.items()).__hash__()
+        return frozenset(
+            (place, frozenset(counter.items()))
+            for place, counter in self.items()
+            if counter
+        ).__hash__()
 
     def __eq__(self, other):
         if not isinstance(other, OCMarking):
             return False
-        return all(self.get(k, 0) == other.get(k, 0) for k in set(self) | set(other))
+        return all(
+            self.get(p, Counter()) == other.get(p, Counter())
+            for p in set(self.keys()) | set(other.keys())
+        )
 
     def __le__(self, other):
-        for k, v in self.items():
-            if other.get(k, 0) < v:
+        for place, self_counter in self.items():
+            other_counter = other.get(place, Counter())
+            # Every object count in self must be less than or equal to the count in other.
+            if not all(
+                other_counter.get(obj_id, 0) >= count
+                for obj_id, count in self_counter.items()
+            ):
                 return False
         return True
 
     def __add__(self, other):
         result = OCMarking()
-        for k, v in self.items():
-            result[k] = v
-        for k, v in other.items():
-            result[k] = result.get(k, 0) + v
+        for place, self_counter in self.items():
+            result[place] += self_counter
+        for place, other_counter in other.items():
+            result[place] += other_counter
         return result
 
     def __sub__(self, other):
         result = OCMarking()
-        for k, v in self.items():
-            diff = v - other.get(k, 0)
-            if diff > 0:
-                result[k] = diff
+        for place, self_counter in self.items():
+            diff = self_counter - other.get(place, Counter())
+            if diff != Counter():
+                result[place] = diff
         return result
 
     def __repr__(self):
-        # e.g.  ["order1@p1:2", "order2@p3:1", …]
-        entries = sorted(self.items(), key=lambda item: (item[0][1].name, item[0][0]))
-        return str(
-            [f"{obj_id}@{place.name}:{count}" for (obj_id, place), count in entries]
-        )
-
+        # e.g.  ["p1:{o1, o2}", "p2: {o2, o3}", …]
+        sorted_entries = sorted(self.items(), key=lambda item: item[0].name)
+        return ", ".join(
+                f"{place.name}: {objects}"
+                for (place, objects) in sorted_entries
+            ) if sorted_entries else "[]"
+            
     def __str__(self):
         return self.__repr__()
 
     def __deepcopy__(self, memodict={}):
         new_marking = OCMarking()
         memodict[id(self)] = new_marking
-        for (obj_id, place), count in self.items():
+        for place, objects in self.items():
             place_copy = (
                 memodict[id(place)]
                 if id(place) in memodict
                 else deepcopy(place, memodict)
             )
-            new_marking[(obj_id, place_copy)] = count
+            counter_copy = (
+                memodict[id(objects)]
+                if id(objects) in memodict
+                else deepcopy(objects, memodict)
+            )
+            new_marking[place_copy] = counter_copy
         return new_marking
-    
+
     @property
     def places(self) -> Set:
         """
@@ -95,7 +113,7 @@ class OCMarking(Counter):
         Set[str]
             Set of place names in the marking.
         """
-        return {place for (obj_id, place) in self.keys()}
+        return set(self.keys())
 
 
 class OCPetriNet(PetriNet):
