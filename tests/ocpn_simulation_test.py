@@ -5,9 +5,6 @@ from pm4py.objects.ocel.obj import OCEL
 from pm4py.algo.simulation.playout.ocpn.variants.extensive import (
     apply as playout_ocpn_extensive,
 )
-from pm4py.algo.simulation.playout.ocpn.variants.random_walk import (
-    apply as playout_ocpn_random_walk,
-)
 
 
 class OCPNSimulationTest(unittest.TestCase):
@@ -38,10 +35,9 @@ class OCPNSimulationTest(unittest.TestCase):
         )
         final_marking = OCMarking({places["o2"]: {"order1"}, places["o4"]: {"order1"}})
 
-        (traces, idx_to_transition) = playout_ocpn_extensive(
+        (traces, _) = playout_ocpn_extensive(
             ocpn, initial_marking, final_marking, parameters=params
         )
-        self.print_traces(traces, idx_to_transition)
         self.assertEqual(len(traces), 1)
 
         initial_marking = OCMarking(
@@ -49,10 +45,9 @@ class OCPNSimulationTest(unittest.TestCase):
         )
         final_marking = OCMarking({places["o2"]: {"order1"}, places["o4"]: {"order1"}})
 
-        (traces, idx_to_transition) = playout_ocpn_extensive(
+        (traces, _) = playout_ocpn_extensive(
             ocpn, initial_marking, final_marking, parameters=params
         )
-        self.print_traces(traces, idx_to_transition)
         self.assertEqual(len(traces), 0)
 
     def test_playout_ocpn_extensive_2(self):
@@ -72,7 +67,8 @@ class OCPNSimulationTest(unittest.TestCase):
             ocpn, initial_marking, final_marking, parameters=params
         )
         self.assertEqual(len(traces), 52)
-            
+        
+    
     
 
 def ocpn_big():

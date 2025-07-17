@@ -71,10 +71,10 @@ def apply(
         Parameters of the algorithm:
             Parameters.MAX_BINDINGS_PER_ACTIVITY -> Maximum bindings per activity
             Parameters.RETURN_TRACES -> If True, return traces instead of OCEL
-            Parameters.BRANCHING_FACTOR_TRANSITIONS -> How many enabled transitions to explore from a single
-                state (default: sys.maxsize, i.e., no limit)
-            Parameters.BRANCHING_FACTOR_BINDINGS -> How many bindings to explore for a single transition
-                (default: sys.maxsize, i.e., no limit)
+            Parameters.BRANCHING_FACTOR_TRANSITIONS -> Maximum number of transitions to explore from a single
+                state (default: sys.maxsize, i.e., no limit). If set to a float, it will be stochastically rounded to an integer for every state.
+            Parameters.BRANCHING_FACTOR_BINDINGS -> Maximum number of bindings to explore for a single transition
+                (default: sys.maxsize, i.e., no limit). If set to a float, it will be stochastically rounded to an integer for every state.
             Parameters.OCPETRINET_SEMANTICS -> Object-centric Petri net semantics
     """
     if parameters is None:
@@ -136,7 +136,7 @@ def apply(
     feasible_traces_iter = _reconstruct_traces(
         initial_state_key, memo, transition_to_idx, all_transitions
     )
-    
+
     # == Phase 3: Return data in desired format ==
     if return_traces:
         # Inverse the transition_to_idx mapping to get transition labels
@@ -155,8 +155,8 @@ def _populate_memo_graph(
     semantics,
     t_to_idx: dict,
     max_bindings: int,
-    bf_trans: int,
-    bf_binds: int,
+    bf_trans: float,
+    bf_binds: float,
     memo: dict,
 ) -> bool:
     """
@@ -185,8 +185,10 @@ def _populate_memo_graph(
         The maximum number of times any single transition is allowed to fire.
     bf_trans
         The max branching factor for transitions, limiting how many enabled transitions to explore.
+        If set to a float, it will be stochastically rounded to an integer.
     bf_binds
         The max branching factor for bindings, limiting how many bindings to explore for each transition.
+        If set to a float, it will be stochastically rounded to an integer.
     memo
         The memoization cache, a dictionary that is modified in place by the function.
         It maps state_keys to the set of valid next steps or a special marker.
@@ -211,9 +213,11 @@ def _populate_memo_graph(
 
     next_steps = set()
     enabled_transitions = semantics.enabled_transitions(net, marking)
+    # Stochastically round bf_trans to an integer
+    rounded_bf_trans = int(bf_trans) + (1 if random.random() < (bf_trans % 1) else 0)
     # select a random subset if branching factor is limited
     transitions_to_explore = random.sample(
-        list(enabled_transitions), k=min(bf_trans, len(enabled_transitions))
+        list(enabled_transitions), k=min(rounded_bf_trans, len(enabled_transitions))
     )
 
     # explore all successor states by firing enabled transitions
@@ -230,8 +234,14 @@ def _populate_memo_graph(
         # Get all possible bindings for the transition
         bindings = list(semantics.get_possible_bindings(net, t, marking))
 
+        # Stochastically round bf_binds to an integer
+        rounded_bf_binds = int(bf_binds) + (
+            1 if random.random() < (bf_binds % 1) else 0
+        )
         # select a random subset of bindings if branching factor is limited
-        bindings_to_explore = random.sample(bindings, k=min(bf_binds, len(bindings)))
+        bindings_to_explore = random.sample(
+            bindings, k=min(rounded_bf_binds, len(bindings))
+        )
 
         for binding in bindings_to_explore:
             new_marking = semantics.fire(net, t, marking, binding)
