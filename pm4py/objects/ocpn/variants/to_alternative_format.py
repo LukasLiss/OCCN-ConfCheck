@@ -166,11 +166,11 @@ def oc_marking_to_petri(
         return petri_marking
 
     # Aggregate multiplicities per place for the requested object type
-    for (_, place), multiplicity in oc_marking.items():
+    for place, counter in oc_marking.items():
         if place in pn_places.keys():
             if pn_places[place] not in petri_marking:
                 petri_marking[pn_places[place]] = 0
-            petri_marking[pn_places[place]] += multiplicity
+            petri_marking[pn_places[place]] += sum(counter.values())
 
     return petri_marking
 

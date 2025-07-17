@@ -29,7 +29,7 @@ class Variants(Enum):
     
 def apply(ocpn, parameters=None, variant=Variants.TO_OC_CAUSAL_NET):
     """
-    Method for converting from Object-centric Petri Net Object-centric Causal Net
+    Method for converting an Object-centric Petri Net to Object-centric Causal Net
 
     Parameters
     -----------
