@@ -47,7 +47,7 @@ def apply(ocpn: OCPetriNet, parameters=None) -> Dict[str, Any]:
         parameters = {}
 
     object_types = ocpn.object_types
-    activities = {t.name for t in ocpn.transitions}
+    activities = {t.label for t in ocpn.transitions if t.label}
     petri_nets = {ot: _project_ocpn_on_object_type(ocpn, ot) for ot in object_types}
     double_arcs_on_activity = _get_double_arcs(ocpn)
     start_activities = _get_start_end_activities(ocpn, ocpn.initial_marking)
