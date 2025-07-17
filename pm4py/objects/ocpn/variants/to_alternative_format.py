@@ -193,7 +193,9 @@ def _get_double_arcs(ocpn: OCPetriNet) -> Dict[str, Any]:
     double_arcs = {ot: {} for ot in ocpn.object_types}
     for arc in ocpn.arcs:
         ot = arc.object_type
-        act = arc.source.name if isinstance(arc.source, OCPetriNet.Transition) else arc.target.name
+        act = arc.source.label if isinstance(arc.source, OCPetriNet.Transition) else arc.target.label
+        if act is None:
+            continue
         if act in double_arcs[ot]:
             if double_arcs[ot][act] != arc.is_variable:
                 raise ValueError(
