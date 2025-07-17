@@ -137,3 +137,7 @@ dmypy.json
 
 # Renovate bot
 renovate.json5
+
+
+evaluation/event_logs
+evaluation/discovered_ocpns
