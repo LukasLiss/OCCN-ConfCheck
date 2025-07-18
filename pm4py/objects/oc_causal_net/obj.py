@@ -184,7 +184,7 @@ class OCCausalNet(object):
         ----------
         dependency_graph : nx.MultiDiGraph
             Object-centric dependency graph
-            TODO elaborate on DG format
+            Arc (a, object_type, a') must be encoded as dg[a][a'][object_type] = {"object_type": object_type}
         output_marker_groups : Dict[str, List[OCCausalNet.MarkerGroup]]
             Output marker groups per activity
         input_marker_groups : Dict[str, List[OCCausalNet.MarkerGroup]]
