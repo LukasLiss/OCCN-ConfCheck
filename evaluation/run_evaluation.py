@@ -9,7 +9,6 @@ from rich.table import Table
 from rich.panel import Panel
 from rich.rule import Rule
 from rich.align import Align
-from rich.text import Text
 from rich import box
 
 from pm4py.objects.oc_causal_net.converted_occn_semantics import (
@@ -20,14 +19,13 @@ from pm4py.objects.ocpn import converter as ocpn_converter
 from pm4py.algo.simulation.playout.ocpn.variants.extensive import (
     apply as playout_ocpn_extensive,
 )
-from pm4py.objects.oc_causal_net.obj import OCCausalNet
 from pm4py.objects.ocpn.obj import OCMarking
 
 DEFAULT_MAX_BINDINGS_PER_ACTIVITY = 3
 
 def evaluation():
     ocels = ["ContainerLogistics.json"]
-    time_budget = 1*60  # seconds
+    time_budget = 60*60  # seconds
 
     for ocel_name in ocels:
 
