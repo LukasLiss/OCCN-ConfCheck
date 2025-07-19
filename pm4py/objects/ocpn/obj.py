@@ -27,7 +27,13 @@ from pm4py.objects.petri_net.obj import PetriNet
 
 
 class OCMarking(defaultdict):
-    """An object-centric marking represented as a mapping from places to multisets of object IDs."""
+    """
+    An object-centric marking represented as a mapping from places to multisets of object IDs.
+    
+    ```
+    marking = OCMarking({p: Counter(["object1", "object2"])})
+    ```
+    """
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         """Initializes the OCMarking, querying unspecified places defaults to an empty multiset."""
