@@ -20,10 +20,12 @@ Website: https://processintelligence.solutions
 Contact: info@processintelligence.solutions
 """
 
+from itertools import combinations
 import networkx as nx
 from pm4py.objects.oc_causal_net.utils.filters import filter4
 from typing import Tuple, List, Dict
-from collections import Counter
+from collections import Counter, defaultdict
+from functools import cached_property
 
 
 class OCCausalNet(object):
@@ -65,13 +67,15 @@ class OCCausalNet(object):
             return self.__repr__()
 
         def __hash__(self):
-            return hash((
-                self.related_activity,
-                self.object_type,
-                self.min_count,
-                self.max_count,
-                self.marker_key,
-            ))
+            return hash(
+                (
+                    self.related_activity,
+                    self.object_type,
+                    self.min_count,
+                    self.max_count,
+                    self.marker_key,
+                )
+            )
 
         def __get_related_activity(self):
             return self.__related_activity
@@ -90,10 +94,9 @@ class OCCausalNet(object):
 
         def __get_marker_key(self):
             return self.__marker_key
-        
+
         def __set_marker_key(self, marker_key: int):
             self.__marker_key = marker_key
-            
 
         def __eq__(self, other):
             if isinstance(other, OCCausalNet.Marker):
@@ -154,17 +157,75 @@ class OCCausalNet(object):
             return False
 
         def __hash__(self):
-            return hash((
-                frozenset(self.markers),
-                self.support_count,
-            ))
-
+            return hash(
+                (
+                    frozenset(self.markers),
+                    self.support_count,
+                )
+            )
 
         def __get_markers(self):
             return self.__markers
 
         def __get_support_count(self):
             return self.__support_count
+
+        @cached_property
+        def dict_representation(self):
+            """
+            Returns a dictionary representation of the marker group for
+            efficient checking if the marker group can be bound with a
+            given set of objects per related activity and object type.
+            Is only computed once and cached.
+            Is invalid if the marker group is changed after initialization.
+            Assumes that the marker group is valid, i.e., there is at most one marker per
+            related activity and object type.
+
+            Returns
+            -------
+            defaultdict[str, defaultdict[str, tuple[int, int]]]
+                Dictionary representation of the marker group, mapping
+                related activities to objects types to min and max cardinalities.
+            """
+            result = defaultdict(lambda: defaultdict(lambda: (float("inf"), 0)))
+            for marker in self.markers:
+                related_activity = marker.related_activity
+                object_type = marker.object_type
+                result[related_activity][object_type] = (
+                    marker.min_count,
+                    marker.max_count,
+                )
+            return result
+
+        @cached_property
+        def key_constraints(self):
+            """
+            Returns all tuples (related_activity, object_type, related_activity_2) that
+            cannot share objects due to having the same key.
+            Is only computed once and cached.
+            Is invalid if the marker group is changed after initialization.
+
+            Returns
+            -------
+            Dict[str, List[Tuple[str, str, str]]]
+                Dictionary mapping object types to tuples (related_activity, object_type, related_activity_2)
+                that cannot share the same marker key.
+            """
+            # group related activities by (marker_key, object_type)
+            grouped = defaultdict(list)
+            for marker in self.markers:
+                grouped[(marker.marker_key, marker.object_type)].append(
+                    marker.related_activity
+                )
+
+            # Generate constraints from groups with >= 2 elements
+            constraints = []
+            for (marker_key, object_type), related_activities in grouped.items():
+                if len(related_activities) > 1:
+                    for act1, act2 in combinations(related_activities, 2):
+                        constraints.append((act1, object_type, act2))
+
+            return constraints
 
         markers = property(__get_markers)
         support_count = property(__get_support_count)
