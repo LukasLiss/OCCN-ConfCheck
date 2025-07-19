@@ -35,7 +35,7 @@ class Parameters(Enum):
     OBJECT_TYPE = constants.PARAM_OBJECT_TYPE
 
 def feasible_traces_to_ocel(
-    feasible_traces_iter, initial_marking, all_transitions, parameters
+    feasible_traces_iter, all_transitions, id_to_obj_type, parameters
 ):
     """
     Converts the feasible traces into an OCEL object.
@@ -44,10 +44,10 @@ def feasible_traces_to_ocel(
     ----------
     feasible_traces_iter : iter
         An iterator over feasible traces, where each trace is a tuple of events
-    initial_marking : OCMarking
-        Initial marking of the object-centric Petri net
     all_transitions : list
         Ordered list of all transitions in the object-centric Petri net
+    id_to_obj_type : dict
+        Mapping from object IDs to their types
     parameters : dict
         Additional parameters for the conversion
 
@@ -73,15 +73,6 @@ def feasible_traces_to_ocel(
         Parameters.EVENT_TIMESTAMP, parameters, constants.DEFAULT_EVENT_TIMESTAMP
     )
     # Convert all found traces to OCEL format
-
-    # We did not save the object types of objects in the events, so we need to reconstruct them from the initial marking
-    # Maps object ids to their types
-    id_to_obj_type = dict()
-    # Every object can be found in the initial marking
-    for p, obj_ids in initial_marking.items():
-        ot = p.object_type
-        for obj_id in obj_ids:
-            id_to_obj_type[obj_id] = ot
 
     # Create the OCEL object
     events_list = []

@@ -131,6 +131,7 @@ def apply(
         bf_binds,
         memo,
     )
+    
 
     # == Phase 2: Reconstruct traces from memo ==
     feasible_traces_iter = _reconstruct_traces(
@@ -138,13 +139,22 @@ def apply(
     )
 
     # == Phase 3: Return data in desired format ==
+    # We did not save the object types of objects in the events, so we need to reconstruct them from the initial marking
+    # Maps object ids to their types
+    id_to_obj_type = dict()
+    # Every object can be found in the initial marking
+    for p, obj_ids in initial_marking.items():
+        ot = p.object_type
+        for obj_id in obj_ids:
+            id_to_obj_type[obj_id] = ot
+    
     if return_traces:
         # Inverse the transition_to_idx mapping to get transition labels
         idx_to_transition = {v: k for k, v in transition_to_idx.items()}
-        return (list(feasible_traces_iter), idx_to_transition)
+        return (list(feasible_traces_iter), idx_to_transition, id_to_obj_type)
     else:
         return feasible_traces_to_ocel(
-            feasible_traces_iter, initial_marking, all_transitions, parameters
+            feasible_traces_iter, all_transitions, id_to_obj_type, parameters
         )
 
 
