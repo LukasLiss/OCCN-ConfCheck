@@ -207,8 +207,8 @@ class OCCausalNet(object):
 
             Returns
             -------
-            Dict[str, List[Tuple[str, str, str]]]
-                Dictionary mapping object types to tuples (related_activity, object_type, related_activity_2)
+            List[Tuple[str, str, str]]
+                List of tuples (related_activity, object_type, related_activity_2)
                 that cannot share the same marker key.
             """
             # group related activities by (marker_key, object_type)

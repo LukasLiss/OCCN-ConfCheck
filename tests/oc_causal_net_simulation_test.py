@@ -1,0 +1,81 @@
+import unittest
+from pm4py.objects.oc_causal_net.creation.factory import create_oc_causal_net
+from pm4py.objects.oc_causal_net.semantics import OCCausalNetSemantics, OCCausalNetState
+from pm4py.algo.simulation.playout.oc_causal_net.variants import extensive as playout_extensive  
+
+class OCCausalNetSimulationTest(unittest.TestCase):
+    
+    def test_playout_occn_extensive(self):
+        occn = occn_ABC()
+        
+        parameters = {
+            "maxBindingsPerActivity": 3,
+            "return_sequences": True,
+        }
+        
+        objects = {
+            "order": set()
+        }
+        valid_sequences_iter, _, _ = playout_extensive.apply(occn, objects, parameters)
+        valid_sequences = list(valid_sequences_iter)
+        self.assertEqual(len(valid_sequences), 1)
+    
+        objects = {
+            "order": {"o1"}
+        }
+        valid_sequences_iter, _, _ = playout_extensive.apply(occn, objects, parameters)
+        valid_sequences = list(valid_sequences_iter)
+        self.assertEqual(len(valid_sequences), 1)
+        
+        objects = {
+            "order": {"o1", "o2"}
+        }
+        valid_sequences_iter, _, _ = playout_extensive.apply(occn, objects, parameters)
+        valid_sequences = list(valid_sequences_iter)
+        self.assertEqual(len(valid_sequences), 252)
+    
+    
+def occn_ABC():
+    marker_groups = {
+        "START_order": {
+            "img": [],
+            "omg": [
+                [("a", "order", (1, 1), 0)],
+            ],
+        },
+        "a": {
+            "img": [
+                [("START_order", "order", (1, 1), 0)],
+            ],
+            "omg": [
+                [("b", "order", (1, 1), 0)],
+            ],
+        },
+        "b": {
+            "img": [
+                [("a", "order", (1, 1), 0)],
+            ],
+            "omg": [
+                [("c", "order", (1, 1), 0)],
+            ],
+        },
+        "c": {
+            "img": [
+                [("b", "order", (1, 1), 0)],
+            ],
+            "omg": [
+                [("END_order", "order", (1, 1), 0)],
+            ],
+        },
+        "END_order": {
+            "img": [
+                [("c", "order", (1, 1), 0)],
+            ]
+        },
+    }
+
+    occn = create_oc_causal_net(marker_groups)
+    return occn
+    
+if __name__ == "__main__":
+    unittest.main()
