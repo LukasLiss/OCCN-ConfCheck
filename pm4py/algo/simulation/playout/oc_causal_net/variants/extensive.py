@@ -21,6 +21,7 @@ Contact: info@processintelligence.solutions
 """
 
 from collections import Counter, namedtuple
+import random
 from typing import Any, Dict, Optional
 
 import pandas as pd
@@ -41,6 +42,8 @@ class Parameters(Enum):
     RETURN_SEQUENCES = "return_sequences"
     MAX_BINDINGS_PER_ACTIVITY = "maxBindingsPerActivity"
     OCCN_SEMANTICS = "occn_semantics"
+    BRANCHING_FACTOR_ACTIVITIES = "branching_factor_activities"
+    BRANCHING_FACTOR_BINDINGS = "branching_factor_bindings"
 
 
 FINAL_MARKER = "FINAL"
@@ -74,6 +77,8 @@ def apply(
             Parameters.MAX_BINDINGS_PER_ACTIVITY: Maximum number of bindings per activity (default: 3)
             Parameters.RETURN_SEQUENCES: If True, return an iterator to all possible sequences of bindings instead of an OCEL
             Parameters.OCCN_SEMANTICS: The semantics to be used for the causal net (default: OCCausalNetSemantics())
+            Parameters.BRANCHING_FACTOR_ACTIVITIES: Maximum branching factor for exploring enabled activities (default: inf). Note that the play-out will generate a subset of all sequences if this is set.
+            Parameters.BRANCHING_FACTOR_BINDINGS: Maximum branching factor for exploring enabled bindings (default: inf). Note that the play-out will generate a subset of all sequences if this is set.
     """
     if parameters is None:
         parameters = {}
@@ -88,6 +93,12 @@ def apply(
         Parameters.OCCN_SEMANTICS,
         parameters,
         OCCausalNetSemantics(),
+    )
+    bf_act = exec_utils.get_param_value(
+        Parameters.BRANCHING_FACTOR_ACTIVITIES, parameters, float("inf")
+    )
+    bf_bind = exec_utils.get_param_value(
+        Parameters.BRANCHING_FACTOR_BINDINGS, parameters, float("inf")
     )
 
     # create int id for every activity for memory efficiency
@@ -138,7 +149,9 @@ def apply(
         activity_to_id,
         id_to_activity,
         object_type_to_id,
-        memo
+        bf_act,
+        bf_bind,
+        memo,
     )
 
     # == Phase 2: Reconstruct traces from memo ==
@@ -165,6 +178,8 @@ def _populate_memo_graph(
     act_to_idx: dict,
     idx_to_act: dict,
     ot_to_idx: dict,
+    bf_act: float,
+    bf_bind: float,
     memo: dict,
 ) -> bool:
     """
@@ -195,6 +210,12 @@ def _populate_memo_graph(
         Dictionary mapping activity ids to their names.
     ot_to_idx : dict
         Dictionary mapping object types to their id.
+    bf_act : float
+        Traversal will only explore this many enabled activities per step. If set, the play-out will generate a subset
+        of all sequences. Will be stochastically rounded if not an integer.
+    bf_bind : float
+        Traversal will only explore this many enabled bindings per activity. If set, the play-out will generate a subset
+        of all sequences. Will be stochastically rounded if not an integer.
     memo : dict
         The memoization cache where the state_key is mapped to a set of next steps or FINAL_MARKER if the state is the empty state.
 
@@ -220,6 +241,13 @@ def _populate_memo_graph(
     enabled_activities = _get_enabled_activities(
         occn, semantics, state, start_activities, act_to_idx, idx_to_act, ot_to_idx
     )
+    
+    # Limit the number of enabled activities to bf_act
+    if bf_act < float("inf"):
+        # Stochastically round bf_act to an integer
+        bf_act = int(bf_act) + (1 if random.random() < (bf_act % 1) else 0)
+        # Select random subset of enabled activities
+        enabled_activities = set(random.sample(list(enabled_activities), min(bf_act, len(enabled_activities))))
 
     # explore all sucessor states by binding all enabled activities
     for act in enabled_activities:
@@ -239,6 +267,13 @@ def _populate_memo_graph(
             )
         else:
             enabled_bindings = semantics.enabled_bindings(occn, act, state, act_to_idx, ot_to_idx)
+
+        # Limit the number of enabled bindings to bf_bind
+        if bf_bind < float("inf"):
+            # Stochastically round bf_bind to an integer
+            bf_bind = int(bf_bind) + (1 if random.random() < (bf_bind % 1) else 0)
+            # Select random subset of enabled bindings
+            enabled_bindings = set(random.sample(enabled_bindings, min(bf_bind, len(enabled_bindings))))
 
         # explore all bindings
         for binding in enabled_bindings:
@@ -265,6 +300,8 @@ def _populate_memo_graph(
                 act_to_idx,
                 idx_to_act,
                 ot_to_idx,
+                bf_act,
+                bf_bind,
                 memo
             ):
                 next_steps.add((binding, new_state_key))

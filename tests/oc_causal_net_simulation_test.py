@@ -33,7 +33,39 @@ class OCCausalNetSimulationTest(unittest.TestCase):
         valid_sequences_iter, _, _ = playout_extensive.apply(occn, objects, parameters)
         valid_sequences = list(valid_sequences_iter)
         self.assertEqual(len(valid_sequences), 252)
+        
+        # objects = {
+        #     "order": {"o1", "o2", "o3"}
+        # }
+        # valid_sequences_iter, _, _ = playout_extensive.apply(occn, objects, parameters)
+        # valid_sequences = list(valid_sequences_iter)
+        # self.assertEqual(len(valid_sequences), 756756)
     
+    def test_playout_occn_extensive_bf_limited(self):
+        occn = occn_ABC()
+        
+        parameters = {
+            "maxBindingsPerActivity": 3,
+            "return_sequences": True,
+        }
+        objects = {
+            "order": {"o1", "o2"}
+        }
+        valid_sequences_iter, _, _ = playout_extensive.apply(occn, objects, parameters)
+        valid_sequences = list(valid_sequences_iter)
+        self.assertEqual(len(valid_sequences), 252)
+        
+        parameters = {
+            "maxBindingsPerActivity": 3,
+            "return_sequences": True,
+            "branching_factor_activities": 1.5,
+            "branching_factor_bindings": 1.5
+        }
+        for _ in range (10):
+            valid_sequences_iter_sub, _, _ = playout_extensive.apply(occn, objects, parameters)
+            valid_sequences_sub = list(valid_sequences_iter_sub)
+            for seq in valid_sequences_sub:
+                self.assertTrue(seq in valid_sequences)
     
 def occn_ABC():
     marker_groups = {
