@@ -64,7 +64,7 @@ def apply(
     Compute playout of an object-centric causal net generating an OCEL.
     Extensive search, retrieves all valid binding sequences.
     Starts by binding start activities with the objects specified and ends in the empty state.
-    The empty sequence is considered a valid sequence iff objects is empty.
+    The empty sequence is considered a valid sequence no other sequences are found.
 
     Parameters
     -----------
@@ -245,9 +245,9 @@ def _populate_memo_graph(
     # Limit the number of enabled activities to bf_act
     if bf_act < float("inf"):
         # Stochastically round bf_act to an integer
-        bf_act = int(bf_act) + (1 if random.random() < (bf_act % 1) else 0)
+        bf_act_rounded = int(bf_act) + (1 if random.random() < (bf_act % 1) else 0)
         # Select random subset of enabled activities
-        enabled_activities = set(random.sample(list(enabled_activities), min(bf_act, len(enabled_activities))))
+        enabled_activities = set(random.sample(list(enabled_activities), min(bf_act_rounded, len(enabled_activities))))
 
     # explore all sucessor states by binding all enabled activities
     for act in enabled_activities:
@@ -271,9 +271,9 @@ def _populate_memo_graph(
         # Limit the number of enabled bindings to bf_bind
         if bf_bind < float("inf"):
             # Stochastically round bf_bind to an integer
-            bf_bind = int(bf_bind) + (1 if random.random() < (bf_bind % 1) else 0)
+            bf_bind_rounded = int(bf_bind) + (1 if random.random() < (bf_bind % 1) else 0)
             # Select random subset of enabled bindings
-            enabled_bindings = set(random.sample(enabled_bindings, min(bf_bind, len(enabled_bindings))))
+            enabled_bindings = set(random.sample(list(enabled_bindings), min(bf_bind_rounded, len(enabled_bindings))))
 
         # explore all bindings
         for binding in enabled_bindings:
