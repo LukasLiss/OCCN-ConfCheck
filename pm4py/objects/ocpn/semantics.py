@@ -66,6 +66,57 @@ class OCPetriNetSemantics(Generic[N]):
             else:
                 any_enabled = True
         return any_enabled
+    
+    @classmethod
+    def is_binding_enabled(cls, pn: N, transition: T, marking: OCMarking, objects: Dict[str, Set]) -> bool:
+        """
+        Checks whether a given binding is enabled for a transition in a given object-centric Petri net and marking.
+
+        Parameters
+        ----------
+        pn
+            object-centric Petri net
+        transition
+            transition to check
+        marking
+            marking to check
+        objects
+            dict of objects per object type, e.g., {"order": {"order1", "order2"}}
+
+        Returns
+        -------
+        bool
+            true if binding is enabled, false otherwise
+        """
+        # We need to consume at least one token
+        at_least_one_object = False
+        
+        # Check for every in-arc if:
+        # - the binding respects the variability of the in-arc
+        # - the state contains the necessary tokens
+        for a in transition.in_arcs:
+            ot = a.object_type
+            
+            obj_set = objects.get(ot, set())
+            
+            # Check if variability of arc is respected
+            if (not a.is_variable) and (not len(obj_set) == 1):
+                # nv-arc must be bound to exactly one object
+                return False
+            
+            if not obj_set:
+                # We assign not objects to this variable arc
+                continue
+            
+            at_least_one_object = True
+            
+            # Check if state contains all tokens
+            place_tokens = marking[a.source].keys()
+            if not obj_set <= place_tokens:
+                # tokens not present
+                return False
+        
+        return at_least_one_object
 
     @classmethod
     def fire(
@@ -100,6 +151,50 @@ class OCPetriNetSemantics(Generic[N]):
             obj_count = objects.get(a.object_type, set())
             m_out[a.target] += Counter(obj_count)
         return m_out
+    
+    @classmethod
+    def replay(cls, ocpn: N, trace, initial_marking=None, final_marking=None):
+        """
+        Replays a trace on the object-centric Petri net.
+        Starts with the initial marking and check if the trace reaches the final marking.
+        
+        Parameters
+        ----------
+        ocpn : N
+            The object-centric Petri net to replay on.
+        trace : tuple
+            A trace from the object-centric Petri net,
+            represented as a tuple of (transition_name, {object_type: set(object_ids)}) tuples.
+        initial_marking : OCMarking, optional
+            The initial marking to start the replay from. If None, the initial marking of the ocpn is used.
+        final_marking : OCMarking, optional
+            The final marking to check after the replay. If None, the final marking of the ocpn is used.
+        """
+        if not initial_marking:
+            initial_marking = ocpn.initial_marking
+        if not final_marking:
+            final_marking = ocpn.final_marking
+        
+        transitions = {t.name: t for t in ocpn.transitions}
+        
+        # start in the initial marking
+        marking = initial_marking
+        
+        # replay each binding
+        for transition_name, objects in trace:
+            t = transitions[transition_name]
+            
+            # Check if the binding is enabled
+            if not cls.is_binding_enabled(ocpn, t, marking, objects):
+                return False
+            
+            # Fire
+            marking = cls.fire(ocpn, t, marking, objects)
+        
+        # Check if we are in the final marking
+        return marking == final_marking
+
+        
 
     @classmethod
     def enabled_transitions(

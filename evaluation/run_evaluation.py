@@ -19,18 +19,26 @@ from pm4py.objects.ocpn import converter as ocpn_converter
 from pm4py.algo.simulation.playout.ocpn.variants.extensive import (
     apply as playout_ocpn_extensive,
 )
-from pm4py.objects.ocpn.obj import OCMarking
+from pm4py.algo.simulation.playout.oc_causal_net.variants.extensive import (
+    apply as playout_occn_extensive,
+)
+from pm4py.objects.ocpn.obj import OCMarking, OCPetriNet
+from pm4py.objects.ocpn.semantics import OCPetriNetSemantics
 
-DEFAULT_MAX_BINDINGS_PER_ACTIVITY = 3
 
 def evaluation():
-    ocels = ["ContainerLogistics.json"]
-    time_budget = 60*60  # seconds
+    
+    #ocels = ["ContainerLogistics.json"]
+    ocels = ["running_ex_ocpn"]
+    time_budget = 14 * 60 * 60  # seconds
 
     for ocel_name in ocels:
 
         # Discover OCPN
-        ocpn = discover_ocpn(ocel_name)
+        if ocel_name == "running_ex_ocpn":
+            ocpn = ocpn_running_ex()
+        else:
+            ocpn = discover_ocpn(ocel_name)
 
         # Convert to OCCausalNet object
         occn = ocpn_converter.apply(
@@ -38,9 +46,13 @@ def evaluation():
         )
 
         # Playout OCPN and replay on OCCN
-        playout_ocpn_replay_on_occn(ocpn, occn, ocel_name, time_budget)
+        #playout_ocpn_replay_on_converted_occn(ocpn, occn, ocel_name, time_budget)
 
-def ocpn_playout_parameters(ocel_name, config_id=0):
+        # Playout OCCN and replay on original OCPN
+        playout_converted_occn_replay_on_ocpn(ocpn, occn, ocel_name, time_budget)
+
+
+def playout_parameters(ocel_name, config_id, for_ocpn):
     """
     Specifies parameters for OCPN play-out based on the OCEL name and configuration ID.
 
@@ -48,23 +60,29 @@ def ocpn_playout_parameters(ocel_name, config_id=0):
     ----------
     ocel_name : str
         The name of the OCEL file.
-    config_id : int, optional
-        The configuration ID (default is 0).
+    config_id : int
+        The configuration ID.
+    for_ocpn : bool
+        If True, returns parameters for OCPN play-out, otherwise for OCCN play-out
 
     Returns
     -------
     dict
         A dictionary with parameters for the OCPN play-out.
             - "object_numbers": A dictionary mapping object types to their respective counts in the initial marking.
+            - "final_object_multiplicities": A dictionary mapping object types to their respective counts per object of that type in the final marking.
             - "parameters": dictionary
-                - "branchingFactorTransitions": The branching factor for transitions.
-                - "branchingFactorBindings": The branching factor for bindings.
+                - "ocpnBranchingFactorTransitions": The branching factor for transitions in the ocpn.
+                - "ocpnBranchingFactorBindings": The branching factor for bindings in the ocpn.
+                - "occnBranchingFactorActivities": The branching factor for activities in the occn.
+                - "occnBranchingFactorBindings": The branching factor for bindings in the occn.
                 - "maxBindingsPerActivity": The maximum number of bindings per activity.
     """
     if ocel_name == "ContainerLogistics.json":
         if config_id == 0:  # smallest example
-            branching_factor = 1.4
-            max_bindings_per_activity = DEFAULT_MAX_BINDINGS_PER_ACTIVITY
+            ocpn_branching_factor = 1.4
+            occn_branching_factor = 1.2
+            max_bindings_per_activity = 4
             object_numbers = {
                 "Customer Order": 1,
                 "Transport Document": 1,
@@ -75,26 +93,57 @@ def ocpn_playout_parameters(ocel_name, config_id=0):
                 "Forklift": 1,
             }
         elif config_id == 1:  # double in size
-            branching_factor = 1.2
-            max_bindings_per_activity = DEFAULT_MAX_BINDINGS_PER_ACTIVITY
+            ocpn_branching_factor = 1.2
+            occn_branching_factor = 1.2
+            max_bindings_per_activity = 6
             object_numbers = {
                 "Customer Order": 2,
                 "Transport Document": 2,
-                "Vehicle": 1,
+                "Vehicle": 4,
                 "Container": 4,
                 "Truck": 1,
                 "Handling Unit": 4,
                 "Forklift": 1,
             }
+    elif ocel_name == "running_ex_ocpn":
+        ocpn_branching_factor = 1.2
+        occn_branching_factor = 1.1
+        max_bindings_per_activity = 10
+        object_numbers = {
+            "Container": 1,
+            "Order": 4,
+            "Box": 1,
+        }
+        final_object_multiplicities = {
+            "Container": 1,
+            "Order": 2,
+            "Box": 1,
+        }
+
+    if for_ocpn:
+        parameters = {
+            "maxBindingsPerActivity": max_bindings_per_activity,
+            "branchingFactorTransitions": ocpn_branching_factor,
+            "branchingFactorBindings": ocpn_branching_factor,
+            "return_traces": True,
+        }
+    else:
+        parameters = {
+            "maxBindingsPerActivity": max_bindings_per_activity,
+            "branching_factor_activities": occn_branching_factor,
+            "branching_factor_bindings": occn_branching_factor,
+            "return_sequences": True,
+        }
+        
+    if not final_object_multiplicities:
+        final_object_multiplicities = {
+            ot: 1 for ot in object_numbers.keys()
+        }
 
     return {
-        "parameters": {
-            "branchingFactorTransitions": branching_factor,
-            "branchingFactorBindings": branching_factor,
-            "return_traces": True
-        },
-        "maxBindingsPerActivity": max_bindings_per_activity,
+        "parameters": parameters,
         "object_numbers": object_numbers,
+        "final_object_multiplicities": final_object_multiplicities,
     }
 
 
@@ -132,9 +181,9 @@ def discover_ocpn(ocel_name):
     return ocpn_obj
 
 
-def ocpn_playout_config(ocel_name, ocpn, config_id=0):
+def playout_config(ocel_name, ocpn, for_ocpn, config_id=0):
     """
-    This function returns the configuration for the OCPN play-out based on the OCEL name and config ID.
+    This function returns the configuration for the play-out based on the OCEL name and config ID.
 
     Parameters
     ----------
@@ -142,18 +191,21 @@ def ocpn_playout_config(ocel_name, ocpn, config_id=0):
         The name of the OCEL file.
     ocpn : OCPetriNet
         The OCPetriNet object.
+    for_ocpn : bool
+        If True, returns parameters for OCPN play-out, otherwise for OCCN play-out
     config_id : int, optional
         The configuration ID (default is 0).
 
     Returns
     -------
     dict
-        The configuration dictionary for the OCPN play-out.
+        The configuration dictionary for the OCPN/OCCN play-out.
             - "initial_marking": The initial marking of the OCPN.
             - "final_marking": The final marking of the OCPN.
+            - "objects": A dictionary mapping object types to sets of object IDs that occur in the markings.
             - "parameters": The parameters for the play-out algorithm.
     """
-    ocel_params = ocpn_playout_parameters(ocel_name, config_id)
+    ocel_params = playout_parameters(ocel_name, config_id, for_ocpn=for_ocpn)
 
     # get source & target places of the ocpn
     source_places = {}
@@ -166,29 +218,32 @@ def ocpn_playout_config(ocel_name, ocpn, config_id=0):
 
     # get initial and final markings
     initial_marking = {
-        source_places[obj_type]: Counter(
-            [f"{obj_type}_{i}" for i in range(obj_count)] 
-        )
+        source_places[obj_type]: Counter([f"{obj_type}_{i}" for i in range(obj_count)])
         for obj_type, obj_count in ocel_params["object_numbers"].items()
     }
 
     final_marking = {
-        sink_places[obj_type]: Counter(
-            [f"{obj_type}_{i}" for i in range(obj_count)]
-        )
+        sink_places[obj_type]: Counter({f"{obj_type}_{i}": ocel_params["final_object_multiplicities"][obj_type] for i in range(obj_count)})
         for obj_type, obj_count in ocel_params["object_numbers"].items()
     }
     
+    objects = {
+        obj_type: {f"{obj_type}_{i}" for i in range(obj_count)}
+        for obj_type, obj_count in ocel_params["object_numbers"].items()
+    }
+
     return {
         "initial_marking": OCMarking(initial_marking),
         "final_marking": OCMarking(final_marking),
+        "objects": objects,
         "parameters": ocel_params["parameters"],
     }
-    
-def playout_ocpn_replay_on_occn(ocpn, occn, ocel_name, time_budget):
+
+
+def playout_ocpn_replay_on_converted_occn(ocpn, occn, ocel_name, time_budget):
     """
-    Generate random traces from the OCPN and replay them on the OCCN.
-    
+    Generate random traces from the OCPN and replay them on the converted OCCN.
+
     Parameters
     ----------
     ocpn : OCPetriNet
@@ -201,7 +256,7 @@ def playout_ocpn_replay_on_occn(ocpn, occn, ocel_name, time_budget):
         The time budget for the play-out process in seconds.
     """
     # --- Configuration Setup ---
-    config = ocpn_playout_config(ocel_name, ocpn)
+    config = playout_config(ocel_name, ocpn, for_ocpn=True)
     initial_marking = OCMarking(config["initial_marking"])
     final_marking = OCMarking(config["final_marking"])
     parameters = config["parameters"]
@@ -209,10 +264,22 @@ def playout_ocpn_replay_on_occn(ocpn, occn, ocel_name, time_budget):
     # --- UI and Statistics Initialization ---
     console = Console()
     stats = ReplayStatistics(time_budget)
-    print_header(console, ocel_name, time_budget, config)
+    print_header(
+        console,
+        "OCPN Playout & Replay on transformed OCCN",
+        ocel_name,
+        time_budget,
+        config,
+    )
 
     # --- Main Loop with Live Display ---
-    with Live(stats.get_live_layout(), console=console, screen=False, refresh_per_second=4, vertical_overflow="visible") as live:
+    with Live(
+        stats.get_live_layout(),
+        console=console,
+        screen=False,
+        refresh_per_second=4,
+        vertical_overflow="visible",
+    ) as live:
         while stats.passed_time < time_budget:
             iter_start_time = time.time()
 
@@ -222,7 +289,9 @@ def playout_ocpn_replay_on_occn(ocpn, occn, ocel_name, time_budget):
             )
 
             # Try to replay the traces on the OCCN
-            failed_replays = replay_on_converted_occn(occn, traces, idx_to_transition, id_to_obj_type)
+            failed_replays = replay_on_converted_occn(
+                occn, traces, idx_to_transition, id_to_obj_type
+            )
 
             # Update statistics and refresh the live display
             iter_time = time.time() - iter_start_time
@@ -231,8 +300,73 @@ def playout_ocpn_replay_on_occn(ocpn, occn, ocel_name, time_budget):
 
     # --- Footer ---
     print_footer(console)
-    
-    
+
+
+def playout_converted_occn_replay_on_ocpn(ocpn, occn, ocel_name, time_budget):
+    """
+    Generate random traces from the transformed OCCN and replay them on the original OCPN.
+
+    Parameters
+    ----------
+    ocpn : OCPetriNet
+        The original OCPetriNet object to replay the traces on.
+    occn : OCCausalNet
+        The transformed OCCausalNet object to use for play-out.
+    ocel_name : str
+        The name of the OCEL file, used for getting parameters and logging.
+    time_budget : int
+        The time budget for the play-out process in seconds.
+    """
+    # --- Configuration Setup ---
+    config = playout_config(ocel_name, ocpn, for_ocpn=False)
+    objects = config["objects"]
+    parameters = config["parameters"]
+    ocpn_initial_marking = config["initial_marking"]
+    ocpn_final_marking = config["final_marking"]
+
+
+    # --- UI and Statistics Initialization ---
+    console = Console()
+    stats = ReplayStatistics(time_budget)
+    print_header(
+        console,
+        "OCCN Playout & Replay on original OCPN",
+        ocel_name,
+        time_budget,
+        config,
+    )
+
+    # --- Main Loop with Live Display ---
+    with Live(
+        stats.get_live_layout(),
+        console=console,
+        screen=False,
+        refresh_per_second=4,
+        vertical_overflow="visible",
+    ) as live:
+        while stats.passed_time < time_budget:
+            iter_start_time = time.time()
+
+            # Perform play-out
+            (valid_sequences_iter, id_to_activity, id_to_object_type) = (
+                playout_occn_extensive(occn, objects, parameters=parameters)
+            )
+
+            # Try to replay the traces on the OCCN
+            failed_replays, successful_replays = replay_on_original_ocpn(
+                ocpn, ocpn_initial_marking, ocpn_final_marking, valid_sequences_iter, id_to_activity, id_to_object_type
+            )
+            no_sequences = failed_replays + successful_replays
+
+            # Update statistics and refresh the live display
+            iter_time = time.time() - iter_start_time
+            stats.update(no_sequences, failed_replays, iter_time)
+            live.update(stats.get_live_layout())
+
+    # --- Footer ---
+    print_footer(console)
+
+
 def replay_on_converted_occn(occn, traces, idx_to_transition, id_to_obj_type):
     """
     Replay the given traces from the original OCPN on the converted OCCN.
@@ -247,11 +381,11 @@ def replay_on_converted_occn(occn, traces, idx_to_transition, id_to_obj_type):
         A mapping from transition indices to transition objects in the OCPN.
     id_to_obj_type : dict
         A mapping from object IDs to their respective object types.
-    
+
     Returns
     -------
     int
-        The number of failed replays.    
+        The number of failed replays.
     """
     failed_replays = 0
     for trace in traces:
@@ -273,12 +407,61 @@ def replay_on_converted_occn(occn, traces, idx_to_transition, id_to_obj_type):
         # replay the trace on OCCN
         if not ConvertedOCCausalNetSemantics.replay(occn, trace):
             failed_replays += 1
+            ConvertedOCCausalNetSemantics.replay(occn, trace) # TODO
 
     return failed_replays
 
 
+def replay_on_original_ocpn(
+    ocpn, initial_marking, final_marking, valid_sequences_iter, id_to_activity, id_to_object_type
+):
+    """
+    Replay the given valid sequence of the transformed OCCN on the original OCPN.
+
+    Parameters
+    ----------
+    ocpn : OCPetriNet
+        The original OCPetriNet object to replay the traces on.
+    initial_marking: OCMarking
+        Initial marking to use for replay
+    final_marking: OCMarking
+        Final marking to use for replay
+    valid_sequences_iter : iter of sequences where sequences are tuples of Binding objects
+        The valid sequences to replay.
+    id_to_activity : dict
+        A mapping from activity IDs to their respective activity labels.
+    id_to_object_type : dict
+        A mapping from object IDs to their respective object types.
+
+    Returns
+    -------
+    tuple
+        A tuple containing:
+            - int: The number of failed replays.
+            - int: The number of successful replays.
+    """
+    failed_replays = 0
+    successful_replays = 0
+    
+
+    for sequence in valid_sequences_iter:
+
+        # Convert sequence to trace for the original ocpn
+        trace = ConvertedOCCausalNetSemantics.get_original_ocpn_trace(
+            ocpn, sequence, id_to_activity, id_to_object_type
+        )
+
+        if OCPetriNetSemantics.replay(ocpn, trace, initial_marking, final_marking):
+            successful_replays += 1
+        else:
+            failed_replays += 1
+            OCPetriNetSemantics.replay(ocpn, trace, initial_marking, final_marking) # TODO REMOVE 
+    return failed_replays, successful_replays
+
+
 class ReplayStatistics:
     """A class to manage tracking and displaying replay statistics."""
+
     def __init__(self, time_budget):
         self.time_budget = time_budget
         self.start_time = time.time()
@@ -308,18 +491,29 @@ class ReplayStatistics:
         live_stats_table = Table(
             title="Live Playout & Replay Statistics",
             border_style="blue",
-            box=box.SQUARE
+            box=box.SQUARE,
         )
         live_stats_table.add_column("Metric", style="dim", width=25)
         live_stats_table.add_column("Value", justify="right")
 
-        failure_rate = (self.total_failed_replays / self.total_traces_generated * 100) if self.total_traces_generated > 0 else 0
+        failure_rate = (
+            (self.total_failed_replays / self.total_traces_generated * 100)
+            if self.total_traces_generated > 0
+            else 0
+        )
         success_rate = 100 - failure_rate
         success_color = "green" if success_rate == 100 else "yellow"
-        
-        live_stats_table.add_row("[bold]Successful Replays[/bold]", f"{self.total_traces_generated - self.total_failed_replays} / {self.total_traces_generated} [bold {success_color}]({success_rate:.2f}%)[/bold {success_color}]")
-        live_stats_table.add_row("Passed Time", f"{self.passed_time:.2f}s / {self.time_budget}s")
-        live_stats_table.add_row("Total Traces Generated", f"{self.total_traces_generated}")
+
+        live_stats_table.add_row(
+            "[bold]Successful Replays[/bold]",
+            f"{self.total_traces_generated - self.total_failed_replays} / {self.total_traces_generated} [bold {success_color}]({success_rate:.2f}%)[/bold {success_color}]",
+        )
+        live_stats_table.add_row(
+            "Passed Time", f"{self.passed_time:.2f}s / {self.time_budget}s"
+        )
+        live_stats_table.add_row(
+            "Total Traces Generated", f"{self.total_traces_generated}"
+        )
         live_stats_table.add_row("Iterations", f"{self.i}")
 
         # --- Right Panel: Iteration Statistics ---
@@ -331,14 +525,22 @@ class ReplayStatistics:
             iter_stats_table.add_row("[bold]Traces / Iteration[/bold]", "")
             iter_stats_table.add_row("  Min", f"{min(self.traces_per_iteration)}")
             iter_stats_table.add_row("  Max", f"{max(self.traces_per_iteration)}")
-            iter_stats_table.add_row("  Average", f"{statistics.mean(self.traces_per_iteration):.2f}")
-            iter_stats_table.add_row("  Median", f"{statistics.median(self.traces_per_iteration):.2f}")
+            iter_stats_table.add_row(
+                "  Average", f"{statistics.mean(self.traces_per_iteration):.2f}"
+            )
+            iter_stats_table.add_row(
+                "  Median", f"{statistics.median(self.traces_per_iteration):.2f}"
+            )
             iter_stats_table.add_row()  # Spacer row
             iter_stats_table.add_row("[bold]Time / Iteration (s)[/bold]", "")
             iter_stats_table.add_row("  Min", f"{min(self.iteration_times):.2f}s")
             iter_stats_table.add_row("  Max", f"{max(self.iteration_times):.2f}s")
-            iter_stats_table.add_row("  Average", f"{statistics.mean(self.iteration_times):.2f}s")
-            iter_stats_table.add_row("  Median", f"{statistics.median(self.iteration_times):.2f}s")
+            iter_stats_table.add_row(
+                "  Average", f"{statistics.mean(self.iteration_times):.2f}s"
+            )
+            iter_stats_table.add_row(
+                "  Median", f"{statistics.median(self.iteration_times):.2f}s"
+            )
         else:
             iter_stats_table.add_row("Waiting for first iteration...")
 
@@ -346,19 +548,19 @@ class ReplayStatistics:
             iter_stats_table,
             title="Iteration Statistics",
             border_style="yellow",
-            box=box.SQUARE
+            box=box.SQUARE,
         )
-        
+
         # Combine the two panels into the main grid
         layout_grid.add_row(live_stats_table, iter_stats_panel)
         return layout_grid
 
 
-def print_header(console, ocel_name, time_budget, config):
+def print_header(console, title, ocel_name, time_budget, config):
     """Prints the initial configuration header."""
     # --- Main Title ---
-    console.print() 
-    console.print(Rule("[bold magenta]OCPN Playout & Replay on OCCN[/bold magenta]", style="magenta"))
+    console.print()
+    console.print(Rule(f"[bold magenta]{title}[/bold magenta]", style="magenta"))
     console.print()
 
     # --- Configuration Panel ---
@@ -373,13 +575,130 @@ def print_header(console, ocel_name, time_budget, config):
         Align.center(config_text, vertical="top"),
         title="Configuration",
         border_style="green",
-        padding=(1, 2)
+        padding=(1, 2),
     )
     console.print(header_panel)
     console.print()
 
+
 def print_footer(console):
     console.print(Rule("[bold magenta]Finished[/bold magenta]", style="magenta"))
+
+    
+def ocpn_running_ex():
+    places = dict()
+    transitions = dict()
+    arcs = []
+    
+    name = "running_ex_ocpn"
+    places["container_source"] = OCPetriNet.Place("container_source", "Container")
+    places["c2"] = OCPetriNet.Place("c2", "Container")
+    places["c3"] = OCPetriNet.Place("c3", "Container")
+    places["container_sink"] = OCPetriNet.Place("container_sink", "Container")
+
+    places["order_source"] = OCPetriNet.Place("order_source", "Order")
+    places["o2"] = OCPetriNet.Place("o2", "Order")
+    places["o3"] = OCPetriNet.Place("o3", "Order")
+    places["o4"] = OCPetriNet.Place("o4", "Order")
+    places["o5"] = OCPetriNet.Place("o5", "Order")
+    places["o6"] = OCPetriNet.Place("o6", "Order")
+    places["order_sink"] = OCPetriNet.Place("order_sink", "Order")
+    
+    places["box_source"] = OCPetriNet.Place("box_source", "Box")
+    places["b2"] = OCPetriNet.Place("b2", "Box")
+    places["box_sink"] = OCPetriNet.Place("box_sink", "Box")
+    
+    transitions["c"] = OCPetriNet.Transition("c", "c")
+    transitions["f"] = OCPetriNet.Transition("f", "f")
+    transitions["e"] = OCPetriNet.Transition("e", "e")
+    transitions["a"] = OCPetriNet.Transition("a", "a")
+    transitions["silent1"] = OCPetriNet.Transition("silent1", None)
+    transitions["b"] = OCPetriNet.Transition("b", "b")
+    transitions["s"] = OCPetriNet.Transition("s", "s")
+    transitions["d"] = OCPetriNet.Transition("d", "d")
+    transitions["r"] = OCPetriNet.Transition("r", "r")
+    transitions["ti"] = OCPetriNet.Transition("ti", "ti")
+    transitions["si"] = OCPetriNet.Transition("si", "si")
+    transitions["silent2"] = OCPetriNet.Transition("silent2", None)
+    transitions["da"] = OCPetriNet.Transition("da", "da")
+    transitions["ba"] = OCPetriNet.Transition("ba", "ba")
+    transitions["silent3"] = OCPetriNet.Transition("silent3", None)
+    
+    connect(places["container_source"], transitions["c"], "Container", arcs, is_variable=False)
+    connect(places["container_source"], transitions["f"], "Container", arcs, is_variable=False)
+    connect(transitions["c"], places["c2"], "Container", arcs, is_variable=False)
+    connect(transitions["f"], places["c2"], "Container", arcs, is_variable=False)
+    connect(places["c2"], transitions["e"], "Container", arcs, is_variable=True)
+    connect(transitions["e"], places["c3"], "Container", arcs, is_variable=True)
+    connect(places["c3"], transitions["s"], "Container", arcs, is_variable=True)
+    connect(transitions["s"], places["container_sink"], "Container", arcs, is_variable=True)
+    
+    
+    connect(places["order_source"], transitions["a"], "Order", arcs, is_variable=False)
+    connect(places["order_source"], transitions["silent1"], "Order", arcs, is_variable=False)
+    connect(transitions["a"], places["o2"], "Order", arcs, is_variable=False)
+    connect(transitions["silent1"], places["o2"], "Order", arcs, is_variable=False)
+    connect(places["o2"], transitions["b"], "Order", arcs, is_variable=False)
+    connect(transitions["b"], places["o3"], "Order", arcs, is_variable=False)
+    connect(places["o3"], transitions["s"], "Order", arcs, is_variable=True)
+    connect(transitions["s"], places["o4"], "Order", arcs, is_variable=True)
+    connect(places["o4"], transitions["r"], "Order", arcs, is_variable=True)
+    connect(transitions["r"], places["o5"], "Order", arcs, is_variable=True)
+    connect(transitions["r"], places["o6"], "Order", arcs, is_variable=True)
+    connect(places["o5"], transitions["silent2"], "Order", arcs, is_variable=True)
+    connect(places["o5"], transitions["ti"], "Order", arcs, is_variable=False)
+    connect(places["o5"], transitions["si"], "Order", arcs, is_variable=True)
+    connect(transitions["silent2"], places["order_sink"], "Order", arcs, is_variable=True)
+    connect(transitions["ti"], places["order_sink"], "Order", arcs, is_variable=False)
+    connect(transitions["si"], places["order_sink"], "Order", arcs, is_variable=True)
+    connect(places["o6"], transitions["silent3"], "Order", arcs, is_variable=True)
+    connect(places["o6"], transitions["da"], "Order", arcs, is_variable=False)
+    connect(places["o6"], transitions["ba"], "Order", arcs, is_variable=True)
+    connect(transitions["silent3"], places["order_sink"], "Order", arcs, is_variable=True)
+    connect(transitions["da"], places["order_sink"], "Order", arcs, is_variable=False)
+    connect(transitions["ba"], places["order_sink"], "Order", arcs, is_variable=True)
+    
+    connect(places["box_source"], transitions["d"], "Box", arcs, is_variable=False)
+    connect(transitions["d"], places["b2"], "Box", arcs, is_variable=False)
+    connect(places["b2"], transitions["s"], "Box", arcs, is_variable=True)
+    connect(transitions["s"], places["box_sink"], "Box", arcs, is_variable=True)
+    
+    initial_marking = OCMarking({
+        places["container_source"]: Counter(["c1_0"]),
+        places["order_source"]: Counter(["o1_0"]),
+        places["box_source"]: Counter(["b1_0"]),
+    })
+
+    final_marking = OCMarking({
+        places["container_sink"]: Counter(["c1_0"]),
+        places["order_sink"]: Counter(["o1_0"]),
+        places["box_sink"]: Counter(["b1_0"]),
+    })
+    
+    ocpn = OCPetriNet(
+        name,
+        places=list(places.values()),
+        transitions=list(transitions.values()),
+        arcs=arcs,
+        initial_marking=initial_marking,
+        final_marking=final_marking,
+    )
+    
+    return ocpn
+    
+    
+    
+    
+    
+def connect(source, target, object_type, arcs, *, is_variable=False):
+    """
+    Create an OCPetriNet.Arc, attach it to source/target, store it in `arcs`, and return it.
+    """
+    arc = OCPetriNet.Arc(source, target, object_type, is_variable=is_variable)
+    source.add_out_arc(arc)
+    target.add_in_arc(arc)
+    arcs.append(arc)
+    return arc
 
 if __name__ == "__main__":
     evaluation()
