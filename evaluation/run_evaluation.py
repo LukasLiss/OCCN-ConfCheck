@@ -1,4 +1,5 @@
 from collections import Counter, defaultdict
+import re
 import time
 import pm4py
 import os
@@ -14,8 +15,10 @@ from rich import box
 from pm4py.objects.oc_causal_net.converted_occn_semantics import (
     ConvertedOCCausalNetSemantics,
 )
+from pm4py.objects.oc_causal_net.creation.factory import create_oc_causal_net
 from pm4py.objects.ocpn import factory as ocpn_factory
 from pm4py.objects.ocpn import converter as ocpn_converter
+from pm4py.objects.oc_causal_net import converter as occn_converter
 from pm4py.algo.simulation.playout.ocpn.variants.extensive import (
     apply as playout_ocpn_extensive,
 )
@@ -32,6 +35,23 @@ def evaluation():
     ocels = ["running_ex_ocpn"]
     time_budget = 14 * 60 * 60  # seconds
 
+    # Discover OCPN -> convert to OCCN -> play-out and replay for both directions
+    #eval_ocpn(ocels, time_budget)
+    
+    # Discover OCCN -> convert to OCPN -> play-out and replay for both directions
+    eval_occn(ocels, time_budget)
+    
+def eval_ocpn(ocels, time_budget):
+    """
+    Discover OCPN, convert to OCCN, and perform play-out and replay for both directions.
+
+    Parameters
+    ----------
+    ocels : list of str
+        List of OCEL names to evaluate.
+    time_budget : int
+        Time budget for each evaluation in seconds.
+    """
     for ocel_name in ocels:
 
         # Discover OCPN
@@ -50,9 +70,39 @@ def evaluation():
 
         # Playout OCCN and replay on original OCPN
         playout_converted_occn_replay_on_ocpn(ocpn, occn, ocel_name, time_budget)
+    
+def eval_occn(ocels, time_budget):
+    """
+    Discover OCCN, convert to OCPN, and perform play-out and replay for both directions.
+
+    Parameters
+    ----------
+    ocels : list of str
+        List of OCEL names to evaluate.
+    time_budget : int
+        Time budget for each evaluation in seconds.
+    """
+    for ocel_name in ocels:
+
+        if ocel_name == "running_ex_ocpn":
+            occn = occn_running_ex()
+        else:
+            occn = discover_occn(ocel_name)
+        
+        # Convert to OCPetriNet object
+        ocpn = occn_converter.apply(
+            occn, variant=occn_converter.Variants.TO_OCPN
+        )
+        
+        # Playout OCCN and replay on OCPN
+        playout_occn_replay_on_converted_ocpn(occn, ocpn, ocel_name, time_budget)
+        
+        # Playout OCPN and replay on original OCCN
+        # TODO
+            
 
 
-def playout_parameters(ocel_name, config_id, for_ocpn):
+def playout_parameters(ocel_name, config_id, playout_mode):
     """
     Specifies parameters for OCPN play-out based on the OCEL name and configuration ID.
 
@@ -62,8 +112,12 @@ def playout_parameters(ocel_name, config_id, for_ocpn):
         The name of the OCEL file.
     config_id : int
         The configuration ID.
-    for_ocpn : bool
-        If True, returns parameters for OCPN play-out, otherwise for OCCN play-out
+    playout_mode : str
+        The playout algorithm used, either:
+            - "ocpn_replay_on_converted_occn"
+            - "occn_replay_on_original_ocpn"
+            - "occn_replay_on_converted_ocpn"
+            - "ocpn_replay_on_original_occn"
 
     Returns
     -------
@@ -72,16 +126,13 @@ def playout_parameters(ocel_name, config_id, for_ocpn):
             - "object_numbers": A dictionary mapping object types to their respective counts in the initial marking.
             - "final_object_multiplicities": A dictionary mapping object types to their respective counts per object of that type in the final marking.
             - "parameters": dictionary
-                - "ocpnBranchingFactorTransitions": The branching factor for transitions in the ocpn.
-                - "ocpnBranchingFactorBindings": The branching factor for bindings in the ocpn.
-                - "occnBranchingFactorActivities": The branching factor for activities in the occn.
-                - "occnBranchingFactorBindings": The branching factor for bindings in the occn.
-                - "maxBindingsPerActivity": The maximum number of bindings per activity.
+                - parameters for the play-out algorithm, depending on playout_mode
     """
+    final_object_multiplicities = None
     if ocel_name == "ContainerLogistics.json":
         if config_id == 0:  # smallest example
-            ocpn_branching_factor = 1.4
-            occn_branching_factor = 1.2
+            original_ocpn_branching_factor = 1.4
+            converted_occn_branching_factor = 1.2
             max_bindings_per_activity = 4
             object_numbers = {
                 "Customer Order": 1,
@@ -93,8 +144,8 @@ def playout_parameters(ocel_name, config_id, for_ocpn):
                 "Forklift": 1,
             }
         elif config_id == 1:  # double in size
-            ocpn_branching_factor = 1.2
-            occn_branching_factor = 1.2
+            original_ocpn_branching_factor = 1.2
+            converted_occn_branching_factor = 1.2
             max_bindings_per_activity = 6
             object_numbers = {
                 "Customer Order": 2,
@@ -106,34 +157,68 @@ def playout_parameters(ocel_name, config_id, for_ocpn):
                 "Forklift": 1,
             }
     elif ocel_name == "running_ex_ocpn":
-        ocpn_branching_factor = 1.2
-        occn_branching_factor = 1.1
-        max_bindings_per_activity = 10
-        object_numbers = {
-            "Container": 1,
-            "Order": 4,
-            "Box": 1,
-        }
+        if config_id == 0:
+            original_ocpn_branching_factor = 1.2
+            converted_occn_branching_factor = 1.1
+            original_occn_branching_factor = 1.3
+            converted_ocpn_branching_factor = 1.1
+            max_bindings_per_activity = 10
+            object_numbers = {
+                "Container": 1,
+                "Order": 4,
+                "Box": 1,
+            }
+            
+        elif config_id == 1: # smallest example
+            original_ocpn_branching_factor = 1.2
+            converted_occn_branching_factor = 1.1
+            original_occn_branching_factor = 10
+            converted_ocpn_branching_factor = 1.1
+            max_bindings_per_activity = 10
+            object_numbers = {
+                "Container": 0,
+                "Order": 1,
+                "Box": 1,
+            }
+            
         final_object_multiplicities = {
-            "Container": 1,
-            "Order": 2,
-            "Box": 1,
-        }
+                "Container": 1,
+                "Order": 2,
+                "Box": 1,
+            }
 
-    if for_ocpn:
+    if playout_mode == "ocpn_replay_on_converted_occn":
         parameters = {
             "maxBindingsPerActivity": max_bindings_per_activity,
-            "branchingFactorTransitions": ocpn_branching_factor,
-            "branchingFactorBindings": ocpn_branching_factor,
+            "branchingFactorTransitions": original_ocpn_branching_factor,
+            "branchingFactorBindings": original_ocpn_branching_factor,
+            "return_traces": True,
+        }
+    elif playout_mode == "occn_replay_on_original_ocpn":
+        parameters = {
+            "maxBindingsPerActivity": max_bindings_per_activity,
+            "branching_factor_activities": converted_occn_branching_factor,
+            "branching_factor_bindings": converted_occn_branching_factor,
+            "return_sequences": True,
+        }
+    elif playout_mode == "occn_replay_on_converted_ocpn":
+        parameters = {
+            "maxBindingsPerActivity": max_bindings_per_activity,
+            "branching_factor_activities": original_occn_branching_factor,
+            "branching_factor_bindings": original_occn_branching_factor,
+            "return_sequences": True,
+        }
+    elif playout_mode == "ocpn_replay_on_original_occn":
+        parameters = {
+            "maxBindingsPerActivity": max_bindings_per_activity,
+            "branchingFactorTransitions": converted_ocpn_branching_factor,
+            "branchingFactorBindings": converted_ocpn_branching_factor,
             "return_traces": True,
         }
     else:
-        parameters = {
-            "maxBindingsPerActivity": max_bindings_per_activity,
-            "branching_factor_activities": occn_branching_factor,
-            "branching_factor_bindings": occn_branching_factor,
-            "return_sequences": True,
-        }
+        raise ValueError(
+            f"Invalid playout_mode: {playout_mode}."
+        )
         
     if not final_object_multiplicities:
         final_object_multiplicities = {
@@ -180,8 +265,26 @@ def discover_ocpn(ocel_name):
 
     return ocpn_obj
 
+def discover_occn(ocel_name):
+    """
+    This function reads the OCEL, discovers the OCCausalNet, and saves a visualization.
 
-def playout_config(ocel_name, ocpn, for_ocpn, config_id=0):
+    Parameters
+    ----------
+    ocel_name : str
+        The name of the OCEL file (e.g., "ContainerLogistics.json").
+        The OCEL file should be located in the "evaluation/event_logs" directory.
+        The visualization will be saved in the "evaluation/discovered_occn" directory.
+
+    Returns
+    -------
+    OCCausalNet
+        The discovered OCCausalNet object.
+    """
+    raise NotImplementedError()
+
+
+def playout_config(ocel_name, ocpn, playout_mode, config_id=0):
     """
     This function returns the configuration for the play-out based on the OCEL name and config ID.
 
@@ -191,8 +294,8 @@ def playout_config(ocel_name, ocpn, for_ocpn, config_id=0):
         The name of the OCEL file.
     ocpn : OCPetriNet
         The OCPetriNet object.
-    for_ocpn : bool
-        If True, returns parameters for OCPN play-out, otherwise for OCCN play-out
+    playout_mode : str
+        Play-out mode. See `playout_parameters` for valid modes.
     config_id : int, optional
         The configuration ID (default is 0).
 
@@ -205,15 +308,17 @@ def playout_config(ocel_name, ocpn, for_ocpn, config_id=0):
             - "objects": A dictionary mapping object types to sets of object IDs that occur in the markings.
             - "parameters": The parameters for the play-out algorithm.
     """
-    ocel_params = playout_parameters(ocel_name, config_id, for_ocpn=for_ocpn)
+    ocel_params = playout_parameters(ocel_name, config_id, playout_mode=playout_mode)
 
     # get source & target places of the ocpn
     source_places = {}
     sink_places = {}
+    pattern_occn_to_ocpn_start_places = r"^p_START_(.+)_i_\1$"
+    pattern_occn_to_ocpn_end_places = r"^p_END_(.+)_o_\1$"
     for place in ocpn.places:
-        if place.name.endswith("source"):
+        if place.name.endswith("source") or re.fullmatch(pattern_occn_to_ocpn_start_places, place.name):
             source_places[place.object_type] = place
-        elif place.name.endswith("sink"):
+        elif place.name.endswith("sink") or re.fullmatch(pattern_occn_to_ocpn_end_places, place.name):
             sink_places[place.object_type] = place
 
     # get initial and final markings
@@ -256,9 +361,9 @@ def playout_ocpn_replay_on_converted_occn(ocpn, occn, ocel_name, time_budget):
         The time budget for the play-out process in seconds.
     """
     # --- Configuration Setup ---
-    config = playout_config(ocel_name, ocpn, for_ocpn=True)
-    initial_marking = OCMarking(config["initial_marking"])
-    final_marking = OCMarking(config["final_marking"])
+    config = playout_config(ocel_name, ocpn, playout_mode="ocpn_replay_on_converted_occn")
+    initial_marking = config["initial_marking"]
+    final_marking = config["final_marking"]
     parameters = config["parameters"]
 
     # --- UI and Statistics Initialization ---
@@ -302,7 +407,7 @@ def playout_ocpn_replay_on_converted_occn(ocpn, occn, ocel_name, time_budget):
     print_footer(console)
 
 
-def playout_converted_occn_replay_on_ocpn(ocpn, occn, ocel_name, time_budget):
+def playout_converted_occn_replay_on_ocpn(ocpn, occn, ocel_name, time_budget, config_id=0):
     """
     Generate random traces from the transformed OCCN and replay them on the original OCPN.
 
@@ -316,25 +421,67 @@ def playout_converted_occn_replay_on_ocpn(ocpn, occn, ocel_name, time_budget):
         The name of the OCEL file, used for getting parameters and logging.
     time_budget : int
         The time budget for the play-out process in seconds.
+    config_id : int, optional
+        The configuration ID to use, by default 0.
+    """
+    _execute_occn_playout_and_replay_on_ocpn(
+        ocpn=ocpn,
+        occn=occn,
+        ocel_name=ocel_name,
+        time_budget=time_budget,
+        config_id=config_id,
+        playout_mode="occn_replay_on_original_ocpn",
+        header_title="OCCN Playout & Replay on original OCPN",
+    )
+
+def playout_occn_replay_on_converted_ocpn(occn, ocpn, ocel_name, time_budget, config_id=0):
+    """
+    Generate random traces from the OCCN and replay them on the converted OCPN.
+
+    Parameters
+    ----------
+    occn : OCCausalNet
+        The OCCausalNet object to play out.
+    ocpn : OCPetriNet
+        The OCPetriNet object to replay the traces on.
+    ocel_name : str
+        The name of the OCEL file, used for getting parameters and logging.
+    time_budget : int
+        The time budget for the play-out process in seconds.
+    config_id : int, optional
+        The configuration ID to use, by default 0.
+    """
+    _execute_occn_playout_and_replay_on_ocpn(
+        ocpn=ocpn,
+        occn=occn,
+        ocel_name=ocel_name,
+        time_budget=time_budget,
+        config_id=config_id,
+        playout_mode="occn_replay_on_converted_ocpn",
+        header_title="OCCN Playout & Replay on converted OCPN",
+    )
+    
+    
+def _execute_occn_playout_and_replay_on_ocpn(
+    ocpn, occn, ocel_name, time_budget, config_id, playout_mode, header_title
+):
+    """
+    Computes play-out for an OCCausalNet and replays the sequences on the OCPetriNet.
+    The playout mode determines whether the ocpn was converted to the occn or vice versa.
     """
     # --- Configuration Setup ---
-    config = playout_config(ocel_name, ocpn, for_ocpn=False)
+    config = playout_config(
+        ocel_name, ocpn, config_id=config_id, playout_mode=playout_mode
+    )
     objects = config["objects"]
     parameters = config["parameters"]
     ocpn_initial_marking = config["initial_marking"]
     ocpn_final_marking = config["final_marking"]
 
-
     # --- UI and Statistics Initialization ---
     console = Console()
     stats = ReplayStatistics(time_budget)
-    print_header(
-        console,
-        "OCCN Playout & Replay on original OCPN",
-        ocel_name,
-        time_budget,
-        config,
-    )
+    print_header(console, header_title, ocel_name, time_budget, config)
 
     # --- Main Loop with Live Display ---
     with Live(
@@ -347,24 +494,57 @@ def playout_converted_occn_replay_on_ocpn(ocpn, occn, ocel_name, time_budget):
         while stats.passed_time < time_budget:
             iter_start_time = time.time()
 
-            # Perform play-out
+            # Perform play-out 
             (valid_sequences_iter, id_to_activity, id_to_object_type) = (
                 playout_occn_extensive(occn, objects, parameters=parameters)
             )
 
-            # Try to replay the traces on the OCCN
-            failed_replays, successful_replays = replay_on_original_ocpn(
-                ocpn, ocpn_initial_marking, ocpn_final_marking, valid_sequences_iter, id_to_activity, id_to_object_type
+            # Perform replay 
+            failed_replays, successful_replays = _perform_replay_on_ocpn(
+                playout_mode,
+                ocpn,
+                ocpn_initial_marking,
+                ocpn_final_marking,
+                valid_sequences_iter,
+                id_to_activity,
+                id_to_object_type,
             )
             no_sequences = failed_replays + successful_replays
 
-            # Update statistics and refresh the live display
+            # Update statistics and refresh the live display 
             iter_time = time.time() - iter_start_time
             stats.update(no_sequences, failed_replays, iter_time)
             live.update(stats.get_live_layout())
 
     # --- Footer ---
     print_footer(console)
+
+    
+def _perform_replay_on_ocpn(
+    playout_mode, ocpn, initial_marking, final_marking, sequences_iter, id_to_activity, id_to_object_type
+):
+    """
+    Performs replay on the OCPetriNet based on the specified playout mode.
+    
+    Returns
+    -------
+    tuple
+        A tuple containing (failed_replays, successful_replays).
+    """
+    if playout_mode == "occn_replay_on_original_ocpn":
+        return replay_on_original_ocpn(
+            ocpn, initial_marking, final_marking, sequences_iter, id_to_activity, id_to_object_type
+        )
+    elif playout_mode == "occn_replay_on_converted_ocpn":
+        print("[WARNING] replay_on_converted_ocpn is not implemented yet")
+        #failed_replays, successful_replays = replay_on_converted_ocpn(
+            #    ocpn, ocpn_initial_marking, ocpn_final_marking, valid_sequences_iter, id_to_activity, id_to_object_type
+            #)
+        successful_replays = len(list(sequences_iter))
+        failed_replays = 0
+        return failed_replays, successful_replays
+    else:
+        raise ValueError(f"Unknown playout_mode provided: {playout_mode}")
 
 
 def replay_on_converted_occn(occn, traces, idx_to_transition, id_to_obj_type):
@@ -686,6 +866,146 @@ def ocpn_running_ex():
     
     return ocpn
     
+def occn_running_ex():
+    marker_groups = {
+        "START_Container": {
+            "omg": [
+                [("c", "Container", (1, 1), 0), ("i", "Container", (1, 1), 0)],
+            ],
+        },
+        "c": {
+            "img": [
+                [("START_Container", "Container", (1, 1), 0)],
+            ],
+            "omg": [
+                [("e", "Container", (1, 1), 0)],
+            ],
+        },
+        "i": {
+            "img": [
+                [("START_Container", "Container", (1, 1), 0)],
+            ],
+            "omg": [
+                [("e", "Container", (1, 1), 0)],
+            ],
+        },
+        "e": {
+            "img": [
+                [("c", "Container", (1, 1), 0), ("i", "Container", (1, 1), 0)],
+            ],
+            "omg": [
+                [("s", "Container", (1, 1), 0)],
+            ],
+        },
+        "START_Order": {
+            "omg": [
+                [("a", "Order", (1, 1), 0)],
+                [("b", "Order", (1, 1), 0)],
+            ],
+        },
+        "a": {
+            "img": [
+                [("START_Order", "Order", (1, 1), 0)],
+            ],
+            "omg": [
+                [("b", "Order", (1, 1), 0)],
+            ],
+        },
+        "b": {
+            "img": [
+                [("START_Order", "Order", (1, 1), 0)],
+                [("a", "Order", (1, 1), 0)],
+            ],
+            "omg": [
+                [("s", "Order", (1, 1), 0)],
+            ],
+        },
+        "START_Box": {
+            "omg": [
+                [("d", "Box", (1, 1), 0)],
+            ],
+        },
+        "d": {
+            "img": [
+                [("START_Box", "Box", (1, 1), 0)],
+            ],
+            "omg": [
+                [("s", "Box", (1, 1), 0)],
+            ],
+        },
+        "s": {
+            "img": [
+                [("e", "Container", (1, 1), 0), ("b", "Order", (1, -1), 0)],
+                [("d", "Box", (1, 1), 0), ("b", "Order", (1, 1), 0)],
+            ],
+            "omg": [
+                [("END_Container", "Container", (1, 1), 0), ("r", "Order", (1, -1), 0)],
+                [("END_Box", "Box", (1, 1), 0), ("r", "Order", (1, 1), 0)],
+            ],
+        },
+        "END_Container": {
+            "img": [
+                [("s", "Container", (1, 1), 0)],
+            ],
+        },
+        "END_Box": {
+            "img": [
+                [("s", "Box", (1, 1), 0)],
+            ],
+        },
+        "r": {
+            "img": [
+                [("s", "Order", (1, 1), 0)],
+                [("s", "Order", (1, -1), 0)],
+            ],
+            "omg": [
+                [("ti", "Order", (1, 1), 1), ("si", "Order", (0, -1), 1), ("da", "Order", (1, 1), 2), ("ba", "Order", (0, -1), 2)],
+            ],
+        },
+        "ti": {
+            "img": [
+                [("r", "Order", (1, 1), 0)],
+            ],
+            "omg": [
+                [("END_Order", "Order", (1, 1), 0)],
+            ],
+        },
+        "si": {
+            "img": [
+                [("r", "Order", (1, -1), 0)],
+            ],
+            "omg": [
+                [("END_Order", "Order", (1, -1), 0)],
+            ],
+        },
+        "da": {
+            "img": [
+                [("r", "Order", (1, 1), 0)],
+            ],
+            "omg": [
+                [("END_Order", "Order", (1, 1), 0)],
+            ],
+        },
+        "ba": {
+            "img": [
+                [("r", "Order", (1, -1), 0)],
+            ],
+            "omg": [
+                [("END_Order", "Order", (1, -1), 0)],
+            ],
+        },
+        "END_Order": {
+            "img": [
+                [("ti", "Order", (1, 1), 0)],
+                [("si", "Order", (1, 1), 0)],
+                [("da", "Order", (1, 1), 0)],
+                [("ba", "Order", (1, 1), 0)],
+            ],
+        },
+    }
+
+    occn = create_oc_causal_net(marker_groups)
+    return occn
     
     
     
