@@ -193,7 +193,7 @@ class OCCausalNet(object):
                 object_type = marker.object_type
                 result[related_activity][object_type] = (
                     marker.min_count,
-                    marker.max_count,
+                    marker.max_count if marker.max_count != -1 else float("inf"),
                 )
             return result
 
