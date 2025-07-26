@@ -173,11 +173,17 @@ class OCPetriNetSemantics(Generic[N]):
         """
         m_out = copy.copy(marking)
         for a in transition.in_arcs:
-            obj_count = objects.get(a.object_type, set())
-            m_out[a.source] -= Counter(obj_count)
+            obj_set = objects.get(a.object_type, set())
+            if a.is_variable:
+                # for variable arcs, consume all present tokens for every object
+                for obj in obj_set:
+                    del m_out[a.source][obj]
+            else:
+                # for non-variable arcs, remove 1 token per object
+                m_out[a.source] -= Counter(obj_set)
         for a in transition.out_arcs:
-            obj_count = objects.get(a.object_type, set())
-            m_out[a.target] += Counter(obj_count)
+            obj_set = objects.get(a.object_type, set())
+            m_out[a.target] += Counter(obj_set)
         return m_out
     
     @classmethod

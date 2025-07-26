@@ -37,27 +37,6 @@ N = TypeVar("N", bound=OCPetriNet)
 class ConvertedOCPetriNetSemantics(OCPetriNetSemantics[N]):
 
     @classmethod
-    def _is_final(cls, marking: OCMarking, final_marking: OCMarking) -> bool:
-        """
-        Overrides the method to check if the marking is final.
-        A marking is considered final if it only contains objects in the places
-        that are part of the final marking, and all other places are empty.
-
-        Parameters
-        ----------
-        marking: OCMarking
-            The marking to check
-        final_marking: OCMarking
-            The final marking to compare against
-
-        Returns
-        -------
-        bool
-            True if the marking is final, False otherwise
-        """
-        return marking.places <= final_marking.places
-
-    @classmethod
     def precompute_ocpn_replay_params(cls, ocpn, occn):
         """
         Precomputes parameters needed for the `replay_occn_sequence` function.
@@ -139,8 +118,6 @@ class ConvertedOCPetriNetSemantics(OCPetriNetSemantics[N]):
         return {
             "start_activities": start_activities,
             "end_activities": end_activities,
-            "start_input_places": start_input_places,
-            "end_output_places": end_output_places,
             "arc_places": arc_places,
             "subnet": subnets,
             "global_binding_place": global_binding_place,
@@ -283,22 +260,18 @@ class ConvertedOCPetriNetSemantics(OCPetriNetSemantics[N]):
         start_activities = precomputed["start_activities"]
         end_activities = precomputed["end_activities"]
         arc_places = precomputed["arc_places"]
-        start_input_places = precomputed["start_input_places"]
-        end_output_places = precomputed["end_output_places"]
         subnets = precomputed["subnet"]
         global_binding_place = precomputed["global_binding_place"]
 
-        # Start in initial marking
-        marking = initial_marking.copy()
+        # Start in empty marking
+        # We keep track of all tokens we assumed to be produced by the start
+        # activities and check at the end if these tokens are reachable
+        # from the given initial marking
+        marking = OCMarking()
 
-        # Keep track of start activity tokens that we assume to be valid
-        # We check this at the very end
-        start_expected_tokens = defaultdict(OCMarking)
+        # Kepp track of all the tokens we need from start activities
+        # to check at the end if we can obtain these with the initial marking
         start_target_tokens = defaultdict(OCMarking)
-
-        # Same for end activities
-        end_expected_tokens = defaultdict(OCMarking)
-        end_target_tokens = defaultdict(OCMarking)
 
         for act_id, consumed, produced in sequence:
             act = id_to_activity[act_id]
@@ -318,19 +291,15 @@ class ConvertedOCPetriNetSemantics(OCPetriNetSemantics[N]):
                 for ot_id, objects in ot_to_obj
             }
 
-            # For start activities in predecessors, move the tokens from their
-            # input place to the arc place towards act
-            # this does not check if these moves are valid. 
+            # Produce the required tokens we need from start activities
             marking = cls._bind_start_activities(
                 marking,
                 act,
                 start_activities,
-                start_input_places,
                 consumed_objects,
                 id_to_activity,
                 id_to_object_type,
                 arc_places,
-                start_expected_tokens,
                 start_target_tokens,
             )
             if marking is None:
@@ -374,27 +343,65 @@ class ConvertedOCPetriNetSemantics(OCPetriNetSemantics[N]):
             if marking is None:
                 return False
 
-            # For end activities in successors, move the tokens from the arc place
-            # towards its output place
-            marking = cls._bind_end_activities(
-                marking,
-                act,
-                end_activities,
-                end_output_places,
-                produced_objects,
-                id_to_activity,
-                id_to_object_type,
-                arc_places,
-                subnets,
-                global_binding_place,
-            )
-            if not marking:
-                return False
+        # Check if all the start activity tokens we created were valid
+        if not cls._start_activity_moves_valid(
+            start_target_tokens,
+            initial_marking,
+            subnets,
+            global_binding_place,
+        ):
+            return False
 
-        # Check if all the start activitiy moves were valid
-        for start_act, expected_tokens in start_expected_tokens.items():
-            target_tokens = start_target_tokens[start_act]
-            if not cls._is_submarking(expected_tokens, marking):
+        # If the sequence is replayable, the marking now only contains tokens
+        # in arc places towards end activities
+        # Check if we can reach a marking with tokens only in final places
+        success = cls._final_marking_reachable(marking, final_marking, subnets, global_binding_place)
+        return success
+
+    @classmethod
+    def _start_activity_moves_valid(
+        cls,
+        start_target_tokens: dict,
+        initial_marking: OCMarking,
+        subnets: dict,
+        global_binding_place: OCPetriNet.Place,
+    ):
+        """
+        Checks if the tokens assumed to be produced by the start activities
+        are reachable from the initial marking.
+        This is checked individually per object type.
+
+        Parameters
+        ----------
+        start_target_tokens: defaultdict
+            A dictionary containing the tokens assumed to be produced by the start activities
+            in the form {start_act: OCMarking}
+            connecting the start activity with a successor.
+        initial_marking: OCMarking
+            The initial marking to check for
+        subnets: dict
+            Mapping from activity names to their respective subnets in the OCPN
+        global_binding_place: OCPetriNet.Place
+            The global binding place in the OCPN.
+
+        Returns
+        -------
+        bool
+            True if all start activity moves were valid, False otherwise
+        """
+        # check for every ot if these tokens are reachable from the initial marking
+        for start_act, target_tokens in start_target_tokens.items():
+            ot = start_act[6:]
+            # expected tokens are the initial marking tokens for this ot
+            expected_tokens = OCMarking(
+                {
+                    p: counter
+                    for p, counter in initial_marking.items()
+                    if p.object_type == ot
+                }
+            )
+
+            if bool(expected_tokens.places) != bool(target_tokens.places):
                 return False
 
             # Check if we can reach the target tokens from the expected tokens
@@ -407,27 +414,8 @@ class ConvertedOCPetriNetSemantics(OCPetriNetSemantics[N]):
                 global_binding_place,
             ):
                 return False
-        
-        # Check if all the end activity moves were valid
-        for end_act, expected_tokens in end_expected_tokens.items():
-            target_tokens = end_target_tokens[end_act]
-            if not cls._is_submarking(expected_tokens, marking):
-                return False
 
-            # Check if we can reach the target tokens from the expected tokens
-            if not cls._simulate_binding(
-                initial_marking,
-                end_act,
-                expected_tokens,
-                target_tokens,
-                subnets,
-                global_binding_place,
-            ):
-                return False
-        
-        # Check if we are in a final marking
-        success = cls._is_final(marking, final_marking)
-        return success
+        return True
 
     @classmethod
     def _bind_start_activities(
@@ -435,7 +423,6 @@ class ConvertedOCPetriNetSemantics(OCPetriNetSemantics[N]):
         marking: OCMarking,
         act: str,
         start_activities: set,
-        start_input_places: dict,
         consumed_objects: dict,
         id_to_activity: dict,
         id_to_object_type: dict,
@@ -443,10 +430,10 @@ class ConvertedOCPetriNetSemantics(OCPetriNetSemantics[N]):
         start_target_tokens: defaultdict,
     ):
         """
-        For all predecessors in consumed_objects that are start activities, move the corresponding tokens
-        from the start activity's input place to the arc place towards the act_id.
-        Does not check if these moves are valid.
-        Stores all moves performed in start_expected_tokens and start_target_tokens
+        For all predecessors in consumed_objects that are start activities,
+        produce the required tokens for the arc place towards the activity act.
+        Does not check if these moves are valid given the initial marking.
+        Stores all moves performed in start_target_tokens
         to allow for a later check once all start activities have been processed.
 
         Parameters
@@ -457,8 +444,6 @@ class ConvertedOCPetriNetSemantics(OCPetriNetSemantics[N]):
             The activity to move the token towards
         start_activities: set
             Set of start activities in the OCCN
-        start_input_places: dict
-            Mapping from start activities to their input place in the OCPN
         consumed_objects: dict
             The objects to bind the start activities with
         id_to_activity: dict
@@ -492,88 +477,9 @@ class ConvertedOCPetriNetSemantics(OCPetriNetSemantics[N]):
 
             # Create the tokens without knowing if the binding is valid
             marking += target_tokens
-            
+
             # Keep track to later check if all start bindings together were valid
             start_target_tokens[start_act] += target_tokens
-
-        return marking
-
-    @classmethod
-    def _bind_end_activities(
-        cls,
-        marking: OCMarking,
-        act: str,
-        end_activities: set,
-        end_output_places: dict,
-        produced_objects: dict,
-        id_to_activity: dict,
-        id_to_object_type: dict,
-        arc_places: dict,
-        subnets: dict,
-        global_binding_place: OCPetriNet.Place,
-        end_expected_tokens: defaultdict,
-        end_target_tokens: defaultdict,
-    ):
-        """
-        For all successors in produced_objects that are end activities,
-        move the corresponding tokens from the arc place towards the end activity's output place.
-        Does not check if these moves are valid.
-        Stores all moves performed in end_expected_tokens and end_target_tokens
-        to allow for a later check once all end activities have been processed.
-
-        Parameters
-        ----------
-        marking: OCMarking
-            The current marking of the OCPN
-        act: str
-            The activity to move the token from
-        end_activities: set
-            Set of end activities in the OCCN
-        end_output_places: dict
-            Mapping from end activities to their output place in the OCPN
-        produced_objects: dict
-            The objects to bind the end activities with
-        id_to_activity: dict
-            Mapping from activity IDs to activity names
-        id_to_object_type: dict
-            Mapping from object IDs to object types
-        arc_places: dict
-            Mapping from (activity, object type, successor activity) to the corresponding arc place in the OCPN
-        subnets: dict
-            Mapping from activity names to their respective subnets in the OCPN
-        global_binding_place: OCPetriNet.Place
-            The global binding place in the OCPN, where the _binding token is added.
-        end_expected_tokens: defaultdict
-            A dictionary to store expected tokens for end activities
-        end_target_tokens: defaultdict
-            A dictionary to store target tokens for end activities
-
-        Returns
-        -------
-        OCMarking or None
-            The updated marking after moving tokens for the end activity
-            Or None if the required tokens are not available
-        """
-        for (succ_id, ot_id), objects in produced_objects.items():
-            end_act = id_to_activity[succ_id]
-            if end_act not in end_activities:
-                continue
-
-            # Expected tokens in the marking
-            expected_tokens = OCMarking(
-                {arc_places[(act, id_to_object_type[ot_id], end_act)]: Counter(objects)}
-            )
-
-            # Target tokens in the end activity's output place
-            target_tokens = OCMarking({end_output_places[end_act]: Counter(objects)})
-            
-            # Perform the binding without knowing if it is valid
-            marking -= expected_tokens
-            marking += target_tokens
-
-            # Keep track to later check if all end bindings together were valid
-            end_expected_tokens[end_act] += expected_tokens
-            end_target_tokens[end_act] += target_tokens
 
         return marking
 
@@ -597,6 +503,28 @@ class ConvertedOCPetriNetSemantics(OCPetriNetSemantics[N]):
         return all(
             obj_set <= marking[place] for place, obj_set in expected_tokens.items()
         )
+
+    @classmethod
+    def _submarkings_per_ot(cls, marking: OCMarking) -> dict:
+        """
+        Returns a dictionary with submarkings of the given marking
+        for each object type.
+
+        Parameters
+        ----------
+        marking: OCMarking
+            The marking to get the submarkings for
+
+        Returns
+        -------
+        dict
+            A dictionary with object types as keys and their respective submarkings as values
+        """
+        submarkings = defaultdict(OCMarking)
+        for place, objects in marking.items():
+            submarkings[place.object_type] += OCMarking({place: objects})
+
+        return dict(submarkings)
 
     @classmethod
     def _simulate_binding(
@@ -641,11 +569,11 @@ class ConvertedOCPetriNetSemantics(OCPetriNetSemantics[N]):
         ocpn_subnet = subnets[act]
 
         # Add the _binding token to the markings
-        expected_tokens_w_binding = expected_tokens + OCMarking(
-            {global_binding_place: {"_binding": 1}}
+        expected_tokens_w_binding = cls._add_binding_token(
+            expected_tokens, global_binding_place
         )
-        target_tokens_w_binding = target_tokens + OCMarking(
-            {global_binding_place: {"_binding": 1}}
+        target_tokens_w_binding = cls._add_binding_token(
+            target_tokens, global_binding_place
         )
 
         # Check if target_tokens is reachable from expected_tokens in the subnet
@@ -663,3 +591,104 @@ class ConvertedOCPetriNetSemantics(OCPetriNetSemantics[N]):
         marking += target_tokens
 
         return marking
+
+    @classmethod
+    def _final_marking_reachable(
+        cls,
+        marking: OCMarking,
+        final_marking: OCMarking,
+        subnets: dict,
+        global_binding_place: OCPetriNet.Place,
+    ) -> bool:
+        """
+        Check if we can reach a final marking from the current marking by only
+        firing transitions corresponding to end activities.
+        A marking is considered final if it only contains objects in the places
+        that are part of the given `final_marking`, and all other places are empty.
+
+        Parameters
+        ----------
+        marking: OCMarking
+            The marking of the OCPN to check
+        final_marking: OCMarking
+            The final marking of the OCPN
+        subnets: dict
+            Mapping from activity names to their respective subnets in the OCPN
+        global_binding_place: OCPetriNet.Place
+            The global binding place in the OCPN
+
+        Returns
+        -------
+        bool
+            True if a final marking is reachable, False otherwise
+        """
+        # Split the marking per object type
+        marking_per_ot = cls._submarkings_per_ot(marking)
+
+        # Check for every ot if we can reach a final marking using its end activity
+        for ot, submarking in marking_per_ot.items():
+            # Get subnet of end activity
+            end_act = "END_" + ot
+            subnet = subnets[end_act]
+
+            # assert all places are in the subnet
+            if not submarking.places <= subnet.places:
+                return False
+
+            # Check if we can reach a final marking using the subnet of the end activity
+            parameters = {"exists_trace": True, "is_final_func": _is_final}
+            expected_tokens_w_binding = cls._add_binding_token(
+                submarking, global_binding_place
+            )
+            target_tokens_w_binding = cls._add_binding_token(
+                final_marking, global_binding_place
+            )
+            success = ocpn_extensive_playout(
+                subnet, expected_tokens_w_binding, target_tokens_w_binding, parameters
+            )
+
+            if not success:
+                return False
+
+        return True
+
+    @classmethod
+    def _add_binding_token(
+        cls, marking: OCMarking, global_binding_place: OCPetriNet.Place
+    ) -> OCMarking:
+        """
+        Adds a token to the global binding place
+
+        Parameters
+        ----------
+        marking: OCMarking
+            The marking to add the token to
+        global_binding_place: OCPetriNet.Place
+            The global binding place
+
+        Returns
+        OCMarking
+        -------
+            The new marking
+        """
+        return marking + OCMarking({global_binding_place: {"_binding": 1}})
+
+
+def _is_final(marking: OCMarking, final_marking: OCMarking) -> bool:
+        """
+        A marking is considered final if it only contains objects in the places
+        that are part of the final marking, and all other places are empty.
+
+        Parameters
+        ----------
+        marking: OCMarking
+            The marking to check
+        final_marking: OCMarking
+            The final marking to compare against
+
+        Returns
+        -------
+        bool
+            True if the marking is final, False otherwise
+        """
+        return marking.places <= final_marking.places

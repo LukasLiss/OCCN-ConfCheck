@@ -44,6 +44,7 @@ class Parameters(Enum):
     RETURN_TRACES = "return_traces"
     EXISTS_TRACE = "exists_trace"
     OCPETRINET_SEMANTICS = "ocpetrinet_semantics"
+    IS_FINAL_FUNC = "is_final_func"
 
 
 FINAL_MARKER = "FINAL"
@@ -78,6 +79,8 @@ def apply(
             Parameters.BRANCHING_FACTOR_BINDINGS -> Maximum number of bindings to explore for a single transition
                 (default: sys.maxsize, i.e., no limit). If set to a float, it will be stochastically rounded to an integer for every state.
             Parameters.OCPETRINET_SEMANTICS -> Object-centric Petri net semantics
+            Parameters.IS_FINAL_FUNC -> Function that given a marking and the final marking returns whether the final marking is reached.
+                (default: marking == final_marking)
     """
     if parameters is None:
         parameters = {}
@@ -105,6 +108,11 @@ def apply(
         Parameters.OCPETRINET_SEMANTICS,
         parameters,
         OCPetriNetSemantics(),
+    )
+    is_final = exec_utils.get_param_value(
+        Parameters.IS_FINAL_FUNC,
+        parameters,
+        _is_final
     )
 
     # Save transitions as ids for memory efficiency; create lookup table for conversion
@@ -135,6 +143,7 @@ def apply(
         bf_trans,
         bf_binds,
         exists_trace,
+        is_final,
         memo,
     )
     
@@ -178,6 +187,7 @@ def _populate_memo_graph(
     bf_trans: float,
     bf_binds: float,
     exists_trace: bool,
+    is_final,
     memo: dict,
 ) -> bool:
     """
@@ -213,6 +223,8 @@ def _populate_memo_graph(
     exists_trace
         If `True`, the function will return a boolean indicating if at least one trace exists that
         leads to the final marking, rather than populating the memo with all valid traces.
+    is_final
+        A function to determine if a marking is the final marking.
     memo
         The memoization cache, a dictionary that is modified in place by the function.
         It maps state_keys to the set of valid next steps or a special marker.
@@ -230,7 +242,7 @@ def _populate_memo_graph(
 
     # state_key has not been explored yet, so we explore it
     marking, transition_counts = state_key
-    if marking == final_marking:
+    if is_final(marking, final_marking):
         # signal that the final marking is reached
         memo[state_key] = FINAL_MARKER
         return True
@@ -283,6 +295,7 @@ def _populate_memo_graph(
                 bf_trans,
                 bf_binds,
                 exists_trace,
+                is_final,
                 memo,
             ):
                 next_steps.add((transition_idx, frozenset(object_ids), new_state_key))
@@ -345,3 +358,7 @@ def _reconstruct_traces(
         ):
             # Prepend the current event
             yield (current_event,) + tail
+
+
+def _is_final(marking, final_marking):
+    return marking == final_marking

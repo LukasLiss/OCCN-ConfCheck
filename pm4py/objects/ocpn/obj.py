@@ -119,14 +119,14 @@ class OCMarking(defaultdict):
     @property
     def places(self) -> Set:
         """
-        Returns the set of all places in the marking.
+        Returns the set of all places in the marking that contain tokens.
 
         Returns
         ------------
         Set[str]
             Set of place names in the marking.
         """
-        return set(self.keys())
+        return set([p for p in self.keys() if self[p]])
 
 
 class OCPetriNet(PetriNet):
