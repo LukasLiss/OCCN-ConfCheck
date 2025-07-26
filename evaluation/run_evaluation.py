@@ -25,6 +25,7 @@ from pm4py.algo.simulation.playout.ocpn.variants.extensive import (
 from pm4py.algo.simulation.playout.oc_causal_net.variants.extensive import (
     apply as playout_occn_extensive,
 )
+from pm4py.objects.ocpn.converted_ocpn_semantics import ConvertedOCPetriNetSemantics
 from pm4py.objects.ocpn.obj import OCMarking, OCPetriNet
 from pm4py.objects.ocpn.semantics import OCPetriNetSemantics
 
@@ -451,6 +452,12 @@ def playout_occn_replay_on_converted_ocpn(occn, ocpn, ocel_name, time_budget, co
     config_id : int, optional
         The configuration ID to use, by default 0.
     """
+    # Pre-compute additional parameters for replay
+    precomputed = ConvertedOCPetriNetSemantics.precompute_ocpn_replay_params(ocpn, occn)
+    
+    if ocel_name == "running_ex_ocpn":
+        config_id = 0
+
     _execute_occn_playout_and_replay_on_ocpn(
         ocpn=ocpn,
         occn=occn,
@@ -459,15 +466,37 @@ def playout_occn_replay_on_converted_ocpn(occn, ocpn, ocel_name, time_budget, co
         config_id=config_id,
         playout_mode="occn_replay_on_converted_ocpn",
         header_title="OCCN Playout & Replay on converted OCPN",
+        precomputed=precomputed,
     )
     
     
 def _execute_occn_playout_and_replay_on_ocpn(
-    ocpn, occn, ocel_name, time_budget, config_id, playout_mode, header_title
+    ocpn, occn, ocel_name, time_budget, config_id, playout_mode, header_title, precomputed=None
 ):
     """
     Computes play-out for an OCCausalNet and replays the sequences on the OCPetriNet.
     The playout mode determines whether the ocpn was converted to the occn or vice versa.
+    
+    Parameters
+    ----------
+    ocpn : OCPetriNet
+        The OCPetriNet object to replay the traces on.
+    occn : OCCausalNet
+        The OCCausalNet object to use for play-out.
+    ocel_name : str
+        The name of the OCEL file, used for getting parameters and logging.
+    time_budget : int
+        The time budget for the play-out process in seconds.
+    config_id : int
+        The configuration ID to use, by default 0.
+    playout_mode : str
+        The playout algorithm used, either:
+            - "occn_replay_on_original_ocpn"
+            - "occn_replay_on_converted_ocpn"
+    header_title : str
+        The title for the header in the console output.
+    precomputed : dict, optional
+        Additional precomputed parameters for the play-out algorithm, by default None.
     """
     # --- Configuration Setup ---
     config = playout_config(
@@ -494,10 +523,12 @@ def _execute_occn_playout_and_replay_on_ocpn(
         while stats.passed_time < time_budget:
             iter_start_time = time.time()
 
+            print("PLAYOUT")# TODO REMOVE
             # Perform play-out 
             (valid_sequences_iter, id_to_activity, id_to_object_type) = (
                 playout_occn_extensive(occn, objects, parameters=parameters)
             )
+            print("REPLAY") # TODO REMOVE
 
             # Perform replay 
             failed_replays, successful_replays = _perform_replay_on_ocpn(
@@ -508,6 +539,7 @@ def _execute_occn_playout_and_replay_on_ocpn(
                 valid_sequences_iter,
                 id_to_activity,
                 id_to_object_type,
+                precomputed=precomputed,
             )
             no_sequences = failed_replays + successful_replays
 
@@ -521,7 +553,7 @@ def _execute_occn_playout_and_replay_on_ocpn(
 
     
 def _perform_replay_on_ocpn(
-    playout_mode, ocpn, initial_marking, final_marking, sequences_iter, id_to_activity, id_to_object_type
+    playout_mode, ocpn, initial_marking, final_marking, sequences_iter, id_to_activity, id_to_object_type, precomputed=None
 ):
     """
     Performs replay on the OCPetriNet based on the specified playout mode.
@@ -536,12 +568,9 @@ def _perform_replay_on_ocpn(
             ocpn, initial_marking, final_marking, sequences_iter, id_to_activity, id_to_object_type
         )
     elif playout_mode == "occn_replay_on_converted_ocpn":
-        print("[WARNING] replay_on_converted_ocpn is not implemented yet")
-        #failed_replays, successful_replays = replay_on_converted_ocpn(
-            #    ocpn, ocpn_initial_marking, ocpn_final_marking, valid_sequences_iter, id_to_activity, id_to_object_type
-            #)
-        successful_replays = len(list(sequences_iter))
-        failed_replays = 0
+        failed_replays, successful_replays = replay_on_converted_ocpn(
+            ocpn, initial_marking, final_marking, sequences_iter, id_to_activity, id_to_object_type, precomputed=precomputed
+        )
         return failed_replays, successful_replays
     else:
         raise ValueError(f"Unknown playout_mode provided: {playout_mode}")
@@ -587,7 +616,6 @@ def replay_on_converted_occn(occn, traces, idx_to_transition, id_to_obj_type):
         # replay the trace on OCCN
         if not ConvertedOCCausalNetSemantics.replay(occn, trace):
             failed_replays += 1
-            ConvertedOCCausalNetSemantics.replay(occn, trace) # TODO
 
     return failed_replays
 
@@ -596,7 +624,7 @@ def replay_on_original_ocpn(
     ocpn, initial_marking, final_marking, valid_sequences_iter, id_to_activity, id_to_object_type
 ):
     """
-    Replay the given valid sequence of the transformed OCCN on the original OCPN.
+    Replay the given valid sequences of the transformed OCCN on the original OCPN.
 
     Parameters
     ----------
@@ -635,7 +663,48 @@ def replay_on_original_ocpn(
             successful_replays += 1
         else:
             failed_replays += 1
-            OCPetriNetSemantics.replay(ocpn, trace, initial_marking, final_marking) # TODO REMOVE 
+    return failed_replays, successful_replays
+
+def replay_on_converted_ocpn(ocpn, initial_marking, final_marking, sequences_iter, id_to_activity, id_to_object_type, precomputed):
+    """
+    Replay the given valid sequences of an OCCN on the converted OCPN.
+    Will allow any final marking that contains only tokens in the places
+    specified by `final_marking`.
+
+    Parameters
+    ----------
+    ocpn : OCPetriNet
+        The converted OCPetriNet object to replay the traces on.
+    initial_marking : OCMarking
+        Initial marking to use for replay.
+    final_marking : OCMarking
+        Final marking to use for replay. 
+    sequences_iter : iter of sequences where sequences are tuples of Binding objects
+        The valid sequences to replay.
+    id_to_activity : dict
+        A mapping from activity IDs to their respective activity labels.
+    id_to_object_type : dict
+        A mapping from object IDs to their respective object types.
+    precomputed : dict
+        Precomputed parameters for the replay.
+    
+    Returns
+    -------
+    tuple
+        A tuple containing:
+            - int: The number of failed replays.
+            - int: The number of successful replays.
+    """
+    failed_replays = 0
+    successful_replays = 0
+    
+    for sequence in sequences_iter:
+        # Convert sequence to trace for the original ocpn
+        if ConvertedOCPetriNetSemantics.replay_occn_sequence(sequence, initial_marking, final_marking, id_to_activity, id_to_object_type, precomputed):
+            successful_replays += 1
+        else:
+            failed_replays += 1
+    
     return failed_replays, successful_replays
 
 

@@ -42,6 +42,7 @@ class Parameters(Enum):
     BRANCHING_FACTOR_TRANSITIONS = "branchingFactorTransitions"
     BRANCHING_FACTOR_BINDINGS = "branchingFactorBindings"
     RETURN_TRACES = "return_traces"
+    EXISTS_TRACE = "exists_trace"
     OCPETRINET_SEMANTICS = "ocpetrinet_semantics"
 
 
@@ -70,6 +71,7 @@ def apply(
     parameters
         Parameters of the algorithm:
             Parameters.MAX_BINDINGS_PER_ACTIVITY -> Maximum bindings per activity
+            Parameters.EXISTS_TRACE -> If True, return a boolean indicating if at least one trace exists instead of an OCEL
             Parameters.RETURN_TRACES -> If True, return traces instead of OCEL
             Parameters.BRANCHING_FACTOR_TRANSITIONS -> Maximum number of transitions to explore from a single
                 state (default: sys.maxsize, i.e., no limit). If set to a float, it will be stochastically rounded to an integer for every state.
@@ -83,8 +85,11 @@ def apply(
     return_traces = exec_utils.get_param_value(
         Parameters.RETURN_TRACES, parameters, False
     )
+    exists_trace = exec_utils.get_param_value(
+        Parameters.EXISTS_TRACE, parameters, False
+    )
     max_bindings_per_activity = exec_utils.get_param_value(
-        Parameters.MAX_BINDINGS_PER_ACTIVITY, parameters, 3
+        Parameters.MAX_BINDINGS_PER_ACTIVITY, parameters, sys.maxsize
     )
     # How many enabled transitions to explore from a single state
     # deactivated by default
@@ -120,7 +125,7 @@ def apply(
     memo = {}
 
     # == Phase 1: Memoization DFS Graph Population ==
-    _populate_memo_graph(
+    trace_exists = _populate_memo_graph(
         initial_state_key,
         net,
         final_marking,
@@ -129,8 +134,13 @@ def apply(
         max_bindings_per_activity,
         bf_trans,
         bf_binds,
+        exists_trace,
         memo,
     )
+    
+    # If we are only interested in whether a trace exists, return immediately
+    if exists_trace:
+        return trace_exists
     
 
     # == Phase 2: Reconstruct traces from memo ==
@@ -167,6 +177,7 @@ def _populate_memo_graph(
     max_bindings: int,
     bf_trans: float,
     bf_binds: float,
+    exists_trace: bool,
     memo: dict,
 ) -> bool:
     """
@@ -199,6 +210,9 @@ def _populate_memo_graph(
     bf_binds
         The max branching factor for bindings, limiting how many bindings to explore for each transition.
         If set to a float, it will be stochastically rounded to an integer.
+    exists_trace
+        If `True`, the function will return a boolean indicating if at least one trace exists that
+        leads to the final marking, rather than populating the memo with all valid traces.
     memo
         The memoization cache, a dictionary that is modified in place by the function.
         It maps state_keys to the set of valid next steps or a special marker.
@@ -268,9 +282,13 @@ def _populate_memo_graph(
                 max_bindings,
                 bf_trans,
                 bf_binds,
+                exists_trace,
                 memo,
             ):
                 next_steps.add((transition_idx, frozenset(object_ids), new_state_key))
+                if exists_trace:
+                    # If we are only interested in whether a trace exists, we can return early
+                    return True
 
     # Add all next steps to the memoization cache
     # If state_key is a deadlock, it will be an empty set

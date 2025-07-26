@@ -117,6 +117,34 @@ class OCPetriNetSemantics(Generic[N]):
                 return False
         
         return at_least_one_object
+    
+    @classmethod
+    def check_and_fire(
+        cls, pn: N, transition: T, marking: OCMarking, objects: Dict[str, Set]
+    ) -> OCMarking:
+        """
+        Checks if a transition is enabled and fires it with the given set of objects.
+        If the transition is not enabled, it returns None.
+
+        Parameters
+        ----------
+        pn
+            object-centric Petri net
+        transition
+            transition to fire
+        marking
+            marking to use
+        objects
+            dict of objects per object type, e.g., {"order": {"order1", "order2"}}
+
+        Returns
+        -------
+        OCMarking or None
+            New marking after firing the transition or None if the transition was not enabled.
+        """
+        if cls.is_binding_enabled(pn, transition, marking, objects):
+            return cls.fire(pn, transition, marking, objects)
+        return None
 
     @classmethod
     def fire(
@@ -192,9 +220,27 @@ class OCPetriNetSemantics(Generic[N]):
             marking = cls.fire(ocpn, t, marking, objects)
         
         # Check if we are in the final marking
-        return marking == final_marking
+        return cls._is_final(marking, final_marking)
 
-        
+    @classmethod
+    def _is_final(cls, marking: OCMarking, final_marking: OCMarking) -> bool:
+        """
+        Checks if the given marking is a valid final marking.
+        May be overriden by subclasses.
+
+        Parameters
+        ----------
+        marking
+            marking to check
+        final_marking
+            final marking to check against
+
+        Returns
+        -------
+        bool
+            true if marking is a final marking, false otherwise
+        """
+        return marking == final_marking
 
     @classmethod
     def enabled_transitions(
