@@ -283,6 +283,8 @@ class OCCausalNetSemantics(Generic[N]):
         Union[MG, None]
             A matching marker group if found, None otherwise.
         """
+        if not obligations:
+            return None
         # Calculate object counts from the obligations
         obj_counts = {
             related_act: {

@@ -16,6 +16,7 @@ from pm4py.objects.oc_causal_net.converted_occn_semantics import (
     ConvertedOCCausalNetSemantics,
 )
 from pm4py.objects.oc_causal_net.creation.factory import create_oc_causal_net
+from pm4py.objects.oc_causal_net.semantics import OCCausalNetSemantics
 from pm4py.objects.ocpn import factory as ocpn_factory
 from pm4py.objects.ocpn import converter as ocpn_converter
 from pm4py.objects.oc_causal_net import converter as occn_converter
@@ -26,22 +27,24 @@ from pm4py.algo.simulation.playout.oc_causal_net.variants.extensive import (
     apply as playout_occn_extensive,
 )
 from pm4py.objects.ocpn.converted_ocpn_semantics import ConvertedOCPetriNetSemantics
+from pm4py.objects.ocpn.converted_ocpn_semantics import _is_final_leq as is_final_leq
 from pm4py.objects.ocpn.obj import OCMarking, OCPetriNet
 from pm4py.objects.ocpn.semantics import OCPetriNetSemantics
 
 
 def evaluation():
-    
-    #ocels = ["ContainerLogistics.json"]
+
+    # ocels = ["ContainerLogistics.json"]
     ocels = ["running_ex_ocpn"]
     time_budget = 14 * 60 * 60  # seconds
 
     # Discover OCPN -> convert to OCCN -> play-out and replay for both directions
-    #eval_ocpn(ocels, time_budget)
-    
+    # eval_ocpn(ocels, time_budget)
+
     # Discover OCCN -> convert to OCPN -> play-out and replay for both directions
     eval_occn(ocels, time_budget)
-    
+
+
 def eval_ocpn(ocels, time_budget):
     """
     Discover OCPN, convert to OCCN, and perform play-out and replay for both directions.
@@ -67,11 +70,12 @@ def eval_ocpn(ocels, time_budget):
         )
 
         # Playout OCPN and replay on OCCN
-        #playout_ocpn_replay_on_converted_occn(ocpn, occn, ocel_name, time_budget)
+        # playout_ocpn_replay_on_converted_occn(ocpn, occn, ocel_name, time_budget)
 
         # Playout OCCN and replay on original OCPN
         playout_converted_occn_replay_on_ocpn(ocpn, occn, ocel_name, time_budget)
-    
+
+
 def eval_occn(ocels, time_budget):
     """
     Discover OCCN, convert to OCPN, and perform play-out and replay for both directions.
@@ -89,18 +93,15 @@ def eval_occn(ocels, time_budget):
             occn = occn_running_ex()
         else:
             occn = discover_occn(ocel_name)
-        
+
         # Convert to OCPetriNet object
-        ocpn = occn_converter.apply(
-            occn, variant=occn_converter.Variants.TO_OCPN
-        )
-        
+        ocpn = occn_converter.apply(occn, variant=occn_converter.Variants.TO_OCPN)
+
         # Playout OCCN and replay on OCPN
-        playout_occn_replay_on_converted_ocpn(occn, ocpn, ocel_name, time_budget)
-        
+        #playout_occn_replay_on_converted_ocpn(occn, ocpn, ocel_name, time_budget)
+
         # Playout OCPN and replay on original OCCN
-        # TODO
-            
+        playout_ocpn_replay_on_original_occn(ocpn, occn, ocel_name, time_budget)
 
 
 def playout_parameters(ocel_name, config_id, playout_mode):
@@ -162,31 +163,31 @@ def playout_parameters(ocel_name, config_id, playout_mode):
             original_ocpn_branching_factor = 1.2
             converted_occn_branching_factor = 1.1
             original_occn_branching_factor = 1.3
-            converted_ocpn_branching_factor = 1.1
+            converted_ocpn_branching_factor = 1.5
             max_bindings_per_activity = 10
             object_numbers = {
                 "Container": 1,
                 "Order": 4,
                 "Box": 1,
             }
-            
-        elif config_id == 1: # smallest example
+
+        elif config_id == 1:  # smallest example
             original_ocpn_branching_factor = 1.2
             converted_occn_branching_factor = 1.1
-            original_occn_branching_factor = 10
+            original_occn_branching_factor = 1.2
             converted_ocpn_branching_factor = 1.1
-            max_bindings_per_activity = 10
+            max_bindings_per_activity = 100
             object_numbers = {
                 "Container": 0,
                 "Order": 1,
                 "Box": 1,
             }
-            
+
         final_object_multiplicities = {
-                "Container": 1,
-                "Order": 2,
-                "Box": 1,
-            }
+            "Container": 1,
+            "Order": 2,
+            "Box": 1,
+        }
 
     if playout_mode == "ocpn_replay_on_converted_occn":
         parameters = {
@@ -215,16 +216,13 @@ def playout_parameters(ocel_name, config_id, playout_mode):
             "branchingFactorTransitions": converted_ocpn_branching_factor,
             "branchingFactorBindings": converted_ocpn_branching_factor,
             "return_traces": True,
+            "is_final_func": is_final_leq
         }
     else:
-        raise ValueError(
-            f"Invalid playout_mode: {playout_mode}."
-        )
-        
+        raise ValueError(f"Invalid playout_mode: {playout_mode}.")
+
     if not final_object_multiplicities:
-        final_object_multiplicities = {
-            ot: 1 for ot in object_numbers.keys()
-        }
+        final_object_multiplicities = {ot: 1 for ot in object_numbers.keys()}
 
     return {
         "parameters": parameters,
@@ -265,6 +263,7 @@ def discover_ocpn(ocel_name):
     ocpn_obj = ocpn_factory.create(ocpn)
 
     return ocpn_obj
+
 
 def discover_occn(ocel_name):
     """
@@ -317,9 +316,13 @@ def playout_config(ocel_name, ocpn, playout_mode, config_id=0):
     pattern_occn_to_ocpn_start_places = r"^p_START_(.+)_i_\1$"
     pattern_occn_to_ocpn_end_places = r"^p_END_(.+)_o_\1$"
     for place in ocpn.places:
-        if place.name.endswith("source") or re.fullmatch(pattern_occn_to_ocpn_start_places, place.name):
+        if place.name.endswith("source") or re.fullmatch(
+            pattern_occn_to_ocpn_start_places, place.name
+        ):
             source_places[place.object_type] = place
-        elif place.name.endswith("sink") or re.fullmatch(pattern_occn_to_ocpn_end_places, place.name):
+        elif place.name.endswith("sink") or re.fullmatch(
+            pattern_occn_to_ocpn_end_places, place.name
+        ):
             sink_places[place.object_type] = place
 
     # get initial and final markings
@@ -329,10 +332,15 @@ def playout_config(ocel_name, ocpn, playout_mode, config_id=0):
     }
 
     final_marking = {
-        sink_places[obj_type]: Counter({f"{obj_type}_{i}": ocel_params["final_object_multiplicities"][obj_type] for i in range(obj_count)})
+        sink_places[obj_type]: Counter(
+            {
+                f"{obj_type}_{i}": ocel_params["final_object_multiplicities"][obj_type]
+                for i in range(obj_count)
+            }
+        )
         for obj_type, obj_count in ocel_params["object_numbers"].items()
     }
-    
+
     objects = {
         obj_type: {f"{obj_type}_{i}" for i in range(obj_count)}
         for obj_type, obj_count in ocel_params["object_numbers"].items()
@@ -346,7 +354,9 @@ def playout_config(ocel_name, ocpn, playout_mode, config_id=0):
     }
 
 
-def playout_ocpn_replay_on_converted_occn(ocpn, occn, ocel_name, time_budget):
+def playout_ocpn_replay_on_converted_occn(
+    ocpn, occn, ocel_name, time_budget, config_id=0
+):
     """
     Generate random traces from the OCPN and replay them on the converted OCCN.
 
@@ -361,10 +371,92 @@ def playout_ocpn_replay_on_converted_occn(ocpn, occn, ocel_name, time_budget):
     time_budget : int
         The time budget for the play-out process in seconds.
     """
+    _execute_ocpn_playout_and_replay_on_occn(
+        ocpn,
+        occn,
+        ocel_name,
+        time_budget,
+        config_id,
+        playout_mode="ocpn_replay_on_converted_occn",
+        header_title="OCPN Playout & Replay on converted OCCN",
+    )
+
+
+def playout_ocpn_replay_on_original_occn(
+    ocpn, occn, ocel_name, time_budget, config_id=0
+):
+    """
+    Generate random traces from the OCPN and replay them on the original OCCN.
+
+    Parameters
+    ----------
+    ocpn : OCPetriNet
+        The OCPetriNet object to play out.
+    occn : OCCausalNet
+        The OCCausalNet object to replay the traces on.
+    ocel_name : str
+        The name of the OCEL file, used for getting parameters and logging.
+    time_budget : int
+        The time budget for the play-out process in seconds.
+    """
+    precomputed = ConvertedOCPetriNetSemantics.precompute_ocpn_replay_params(ocpn, occn)
+
+    _execute_ocpn_playout_and_replay_on_occn(
+        ocpn,
+        occn,
+        ocel_name,
+        time_budget,
+        config_id,
+        playout_mode="ocpn_replay_on_original_occn",
+        header_title="OCPN Playout & Replay on original OCCN",
+        precomputed=precomputed,
+    )
+
+
+def _execute_ocpn_playout_and_replay_on_occn(
+    ocpn, occn, ocel_name, time_budget, config_id, playout_mode, header_title, precomputed=None
+):
+    """
+    Computes play-out for an OCPetriNet and replays the traces on the OCCausalNet.
+    The playout mode determines whether the ocpn was converted to the occn or vice versa.
+
+    Parameters
+    ----------
+    ocpn : OCPetriNet
+        The OCPetriNet object to play out.
+    occn : OCCausalNet
+        The OCCausalNet object to replay the traces on.
+    ocel_name : str
+        The name of the OCEL file, used for getting parameters and logging.
+    time_budget : int
+        The time budget for the play-out process in seconds.
+    config_id : int
+        The configuration ID to use.
+    playout_mode : str
+        The playout algorithm used, either:
+        - "ocpn_replay_on_original_occn"
+        - "ocpn_replay_on_converted_occn"
+    header_title : str
+        The title for the header in the console output.
+    precomputed : dict, optional
+        Additional precomputed parameters for the play-out algorithm, by default None.
+        Required for "ocpn_replay_on_original_occn".
+    """
     # --- Configuration Setup ---
-    config = playout_config(ocel_name, ocpn, playout_mode="ocpn_replay_on_converted_occn")
+    config = playout_config(
+        ocel_name, ocpn, playout_mode=playout_mode, config_id=config_id
+    )
     initial_marking = config["initial_marking"]
     final_marking = config["final_marking"]
+    
+    if playout_mode == "ocpn_replay_on_original_occn":
+        assert precomputed is not None, "Precomputed parameters are required for this playout mode."
+    
+        # Add binding token to both markings
+        global_binding_place = precomputed["global_binding_place"]
+        initial_marking = ConvertedOCPetriNetSemantics._add_binding_token(initial_marking, global_binding_place)
+        final_marking = ConvertedOCPetriNetSemantics._add_binding_token(final_marking, global_binding_place)
+    
     parameters = config["parameters"]
 
     # --- UI and Statistics Initialization ---
@@ -372,7 +464,7 @@ def playout_ocpn_replay_on_converted_occn(ocpn, occn, ocel_name, time_budget):
     stats = ReplayStatistics(time_budget)
     print_header(
         console,
-        "OCPN Playout & Replay on transformed OCCN",
+        header_title,
         ocel_name,
         time_budget,
         config,
@@ -389,14 +481,16 @@ def playout_ocpn_replay_on_converted_occn(ocpn, occn, ocel_name, time_budget):
         while stats.passed_time < time_budget:
             iter_start_time = time.time()
 
+            print("PLAYOUT") # TODO REMOVE
             # Perform play-out
             (traces, idx_to_transition, id_to_obj_type) = playout_ocpn_extensive(
                 ocpn, initial_marking, final_marking, parameters=parameters
             )
+            print("REPLAY") # TODO REMOVE
 
-            # Try to replay the traces on the OCCN
-            failed_replays = replay_on_converted_occn(
-                occn, traces, idx_to_transition, id_to_obj_type
+            # Perform replay
+            failed_replays = _perform_replay_on_occn(
+                playout_mode, occn, traces, idx_to_transition, id_to_obj_type, precomputed=precomputed
             )
 
             # Update statistics and refresh the live display
@@ -408,7 +502,45 @@ def playout_ocpn_replay_on_converted_occn(ocpn, occn, ocel_name, time_budget):
     print_footer(console)
 
 
-def playout_converted_occn_replay_on_ocpn(ocpn, occn, ocel_name, time_budget, config_id=0):
+def _perform_replay_on_occn(
+    playout_mode, occn, traces, idx_to_transition, id_to_obj_type, precomputed=None
+):
+    """
+    Performs replay on the OCCausalNet based on the specified playout mode.
+
+    Parameters
+    ----------
+    playout_mode : str
+        The playout mode used, either:
+            - "ocpn_replay_on_original_occn"
+            - "ocpn_replay_on_converted_occn"
+    occn : OCCausalNet
+        The OCCausalNet object to replay the traces on.
+    traces : list of list of tuples
+        The traces to replay.
+    idx_to_transition : dict
+        Mapping from index to transition for the OCCN.
+    id_to_obj_type : dict
+        Mapping from ID to object type for the OCCN.
+    precomputed : dict, optional
+        Additional precomputed parameters for the replay, by default None. Required for "ocpn_replay_on_original_occn".
+
+    Returns
+    -------
+    int
+        The number of failed replays.
+    """
+    if playout_mode == "ocpn_replay_on_original_occn":
+        return replay_on_original_occn(occn, traces, idx_to_transition, id_to_obj_type, precomputed=precomputed)
+    elif playout_mode == "ocpn_replay_on_converted_occn":
+        return replay_on_converted_occn(occn, traces, idx_to_transition, id_to_obj_type)
+    else:
+        raise ValueError(f"Unknown playout mode: {playout_mode}")
+
+
+def playout_converted_occn_replay_on_ocpn(
+    ocpn, occn, ocel_name, time_budget, config_id=0
+):
     """
     Generate random traces from the transformed OCCN and replay them on the original OCPN.
 
@@ -435,7 +567,10 @@ def playout_converted_occn_replay_on_ocpn(ocpn, occn, ocel_name, time_budget, co
         header_title="OCCN Playout & Replay on original OCPN",
     )
 
-def playout_occn_replay_on_converted_ocpn(occn, ocpn, ocel_name, time_budget, config_id=0):
+
+def playout_occn_replay_on_converted_ocpn(
+    occn, ocpn, ocel_name, time_budget, config_id=0
+):
     """
     Generate random traces from the OCCN and replay them on the converted OCPN.
 
@@ -454,7 +589,7 @@ def playout_occn_replay_on_converted_ocpn(occn, ocpn, ocel_name, time_budget, co
     """
     # Pre-compute additional parameters for replay
     precomputed = ConvertedOCPetriNetSemantics.precompute_ocpn_replay_params(ocpn, occn)
-    
+
     if ocel_name == "running_ex_ocpn":
         config_id = 0
 
@@ -468,15 +603,22 @@ def playout_occn_replay_on_converted_ocpn(occn, ocpn, ocel_name, time_budget, co
         header_title="OCCN Playout & Replay on converted OCPN",
         precomputed=precomputed,
     )
-    
-    
+
+
 def _execute_occn_playout_and_replay_on_ocpn(
-    ocpn, occn, ocel_name, time_budget, config_id, playout_mode, header_title, precomputed=None
+    ocpn,
+    occn,
+    ocel_name,
+    time_budget,
+    config_id,
+    playout_mode,
+    header_title,
+    precomputed=None,
 ):
     """
     Computes play-out for an OCCausalNet and replays the sequences on the OCPetriNet.
     The playout mode determines whether the ocpn was converted to the occn or vice versa.
-    
+
     Parameters
     ----------
     ocpn : OCPetriNet
@@ -523,14 +665,12 @@ def _execute_occn_playout_and_replay_on_ocpn(
         while stats.passed_time < time_budget:
             iter_start_time = time.time()
 
-            print("PLAYOUT")# TODO REMOVE
-            # Perform play-out 
+            # Perform play-out
             (valid_sequences_iter, id_to_activity, id_to_object_type) = (
                 playout_occn_extensive(occn, objects, parameters=parameters)
             )
-            print("REPLAY") # TODO REMOVE
 
-            # Perform replay 
+            # Perform replay
             failed_replays, successful_replays = _perform_replay_on_ocpn(
                 playout_mode,
                 ocpn,
@@ -543,7 +683,7 @@ def _execute_occn_playout_and_replay_on_ocpn(
             )
             no_sequences = failed_replays + successful_replays
 
-            # Update statistics and refresh the live display 
+            # Update statistics and refresh the live display
             iter_time = time.time() - iter_start_time
             stats.update(no_sequences, failed_replays, iter_time)
             live.update(stats.get_live_layout())
@@ -551,13 +691,20 @@ def _execute_occn_playout_and_replay_on_ocpn(
     # --- Footer ---
     print_footer(console)
 
-    
+
 def _perform_replay_on_ocpn(
-    playout_mode, ocpn, initial_marking, final_marking, sequences_iter, id_to_activity, id_to_object_type, precomputed=None
+    playout_mode,
+    ocpn,
+    initial_marking,
+    final_marking,
+    sequences_iter,
+    id_to_activity,
+    id_to_object_type,
+    precomputed=None,
 ):
     """
     Performs replay on the OCPetriNet based on the specified playout mode.
-    
+
     Returns
     -------
     tuple
@@ -565,11 +712,22 @@ def _perform_replay_on_ocpn(
     """
     if playout_mode == "occn_replay_on_original_ocpn":
         return replay_on_original_ocpn(
-            ocpn, initial_marking, final_marking, sequences_iter, id_to_activity, id_to_object_type
+            ocpn,
+            initial_marking,
+            final_marking,
+            sequences_iter,
+            id_to_activity,
+            id_to_object_type,
         )
     elif playout_mode == "occn_replay_on_converted_ocpn":
         failed_replays, successful_replays = replay_on_converted_ocpn(
-            ocpn, initial_marking, final_marking, sequences_iter, id_to_activity, id_to_object_type, precomputed=precomputed
+            ocpn,
+            initial_marking,
+            final_marking,
+            sequences_iter,
+            id_to_activity,
+            id_to_object_type,
+            precomputed=precomputed,
         )
         return failed_replays, successful_replays
     else:
@@ -619,9 +777,49 @@ def replay_on_converted_occn(occn, traces, idx_to_transition, id_to_obj_type):
 
     return failed_replays
 
+def replay_on_original_occn(occn, traces, idx_to_transition, id_to_obj_type, precomputed):
+    """
+    Replay the given traces from the converted OCPN on the original OCCN.
 
+    Parameters
+    ----------
+    occn : OCCausalNet
+        The OCCausalNet object to replay the traces on.
+    traces : list of list of tuples
+        The traces to replay
+    idx_to_transition : dict
+        A mapping from transition indices to transition objects in the OCPN.
+    id_to_obj_type : dict
+        A mapping from object IDs to their respective object types.
+    precomputed : dict
+        Precomputed parameters for the replay.
+    
+    Returns
+    -------
+    int
+        The number of failed replays.
+    """
+    failed_replays = 0
+    
+    # replay every trace
+    for trace in traces:
+        # Convert trace to corresponding OCCN sequence
+        occn_sequence = ConvertedOCPetriNetSemantics.get_original_occn_trace(
+            trace, idx_to_transition, id_to_obj_type, precomputed=precomputed
+        )
+        
+        # Replay the OCCN sequence
+        if not OCCausalNetSemantics.replay(occn, occn_sequence):
+            failed_replays += 1
+        
+    return failed_replays             
 def replay_on_original_ocpn(
-    ocpn, initial_marking, final_marking, valid_sequences_iter, id_to_activity, id_to_object_type
+    ocpn,
+    initial_marking,
+    final_marking,
+    valid_sequences_iter,
+    id_to_activity,
+    id_to_object_type,
 ):
     """
     Replay the given valid sequences of the transformed OCCN on the original OCPN.
@@ -650,7 +848,6 @@ def replay_on_original_ocpn(
     """
     failed_replays = 0
     successful_replays = 0
-    
 
     for sequence in valid_sequences_iter:
 
@@ -665,7 +862,16 @@ def replay_on_original_ocpn(
             failed_replays += 1
     return failed_replays, successful_replays
 
-def replay_on_converted_ocpn(ocpn, initial_marking, final_marking, sequences_iter, id_to_activity, id_to_object_type, precomputed):
+
+def replay_on_converted_ocpn(
+    ocpn,
+    initial_marking,
+    final_marking,
+    sequences_iter,
+    id_to_activity,
+    id_to_object_type,
+    precomputed,
+):
     """
     Replay the given valid sequences of an OCCN on the converted OCPN.
     Will allow any final marking that contains only tokens in the places
@@ -678,7 +884,7 @@ def replay_on_converted_ocpn(ocpn, initial_marking, final_marking, sequences_ite
     initial_marking : OCMarking
         Initial marking to use for replay.
     final_marking : OCMarking
-        Final marking to use for replay. 
+        Final marking to use for replay.
     sequences_iter : iter of sequences where sequences are tuples of Binding objects
         The valid sequences to replay.
     id_to_activity : dict
@@ -687,7 +893,7 @@ def replay_on_converted_ocpn(ocpn, initial_marking, final_marking, sequences_ite
         A mapping from object IDs to their respective object types.
     precomputed : dict
         Precomputed parameters for the replay.
-    
+
     Returns
     -------
     tuple
@@ -697,14 +903,21 @@ def replay_on_converted_ocpn(ocpn, initial_marking, final_marking, sequences_ite
     """
     failed_replays = 0
     successful_replays = 0
-    
+
     for sequence in sequences_iter:
         # Convert sequence to trace for the original ocpn
-        if ConvertedOCPetriNetSemantics.replay_occn_sequence(sequence, initial_marking, final_marking, id_to_activity, id_to_object_type, precomputed):
+        if ConvertedOCPetriNetSemantics.replay_occn_sequence(
+            sequence,
+            initial_marking,
+            final_marking,
+            id_to_activity,
+            id_to_object_type,
+            precomputed,
+        ):
             successful_replays += 1
         else:
             failed_replays += 1
-    
+
     return failed_replays, successful_replays
 
 
@@ -833,12 +1046,12 @@ def print_header(console, title, ocel_name, time_budget, config):
 def print_footer(console):
     console.print(Rule("[bold magenta]Finished[/bold magenta]", style="magenta"))
 
-    
+
 def ocpn_running_ex():
     places = dict()
     transitions = dict()
     arcs = []
-    
+
     name = "running_ex_ocpn"
     places["container_source"] = OCPetriNet.Place("container_source", "Container")
     places["c2"] = OCPetriNet.Place("c2", "Container")
@@ -852,11 +1065,11 @@ def ocpn_running_ex():
     places["o5"] = OCPetriNet.Place("o5", "Order")
     places["o6"] = OCPetriNet.Place("o6", "Order")
     places["order_sink"] = OCPetriNet.Place("order_sink", "Order")
-    
+
     places["box_source"] = OCPetriNet.Place("box_source", "Box")
     places["b2"] = OCPetriNet.Place("b2", "Box")
     places["box_sink"] = OCPetriNet.Place("box_sink", "Box")
-    
+
     transitions["c"] = OCPetriNet.Transition("c", "c")
     transitions["f"] = OCPetriNet.Transition("f", "f")
     transitions["e"] = OCPetriNet.Transition("e", "e")
@@ -872,19 +1085,34 @@ def ocpn_running_ex():
     transitions["da"] = OCPetriNet.Transition("da", "da")
     transitions["ba"] = OCPetriNet.Transition("ba", "ba")
     transitions["silent3"] = OCPetriNet.Transition("silent3", None)
-    
-    connect(places["container_source"], transitions["c"], "Container", arcs, is_variable=False)
-    connect(places["container_source"], transitions["f"], "Container", arcs, is_variable=False)
+
+    connect(
+        places["container_source"],
+        transitions["c"],
+        "Container",
+        arcs,
+        is_variable=False,
+    )
+    connect(
+        places["container_source"],
+        transitions["f"],
+        "Container",
+        arcs,
+        is_variable=False,
+    )
     connect(transitions["c"], places["c2"], "Container", arcs, is_variable=False)
     connect(transitions["f"], places["c2"], "Container", arcs, is_variable=False)
     connect(places["c2"], transitions["e"], "Container", arcs, is_variable=True)
     connect(transitions["e"], places["c3"], "Container", arcs, is_variable=True)
     connect(places["c3"], transitions["s"], "Container", arcs, is_variable=True)
-    connect(transitions["s"], places["container_sink"], "Container", arcs, is_variable=True)
-    
-    
+    connect(
+        transitions["s"], places["container_sink"], "Container", arcs, is_variable=True
+    )
+
     connect(places["order_source"], transitions["a"], "Order", arcs, is_variable=False)
-    connect(places["order_source"], transitions["silent1"], "Order", arcs, is_variable=False)
+    connect(
+        places["order_source"], transitions["silent1"], "Order", arcs, is_variable=False
+    )
     connect(transitions["a"], places["o2"], "Order", arcs, is_variable=False)
     connect(transitions["silent1"], places["o2"], "Order", arcs, is_variable=False)
     connect(places["o2"], transitions["b"], "Order", arcs, is_variable=False)
@@ -897,33 +1125,41 @@ def ocpn_running_ex():
     connect(places["o5"], transitions["silent2"], "Order", arcs, is_variable=True)
     connect(places["o5"], transitions["ti"], "Order", arcs, is_variable=False)
     connect(places["o5"], transitions["si"], "Order", arcs, is_variable=True)
-    connect(transitions["silent2"], places["order_sink"], "Order", arcs, is_variable=True)
+    connect(
+        transitions["silent2"], places["order_sink"], "Order", arcs, is_variable=True
+    )
     connect(transitions["ti"], places["order_sink"], "Order", arcs, is_variable=False)
     connect(transitions["si"], places["order_sink"], "Order", arcs, is_variable=True)
     connect(places["o6"], transitions["silent3"], "Order", arcs, is_variable=True)
     connect(places["o6"], transitions["da"], "Order", arcs, is_variable=False)
     connect(places["o6"], transitions["ba"], "Order", arcs, is_variable=True)
-    connect(transitions["silent3"], places["order_sink"], "Order", arcs, is_variable=True)
+    connect(
+        transitions["silent3"], places["order_sink"], "Order", arcs, is_variable=True
+    )
     connect(transitions["da"], places["order_sink"], "Order", arcs, is_variable=False)
     connect(transitions["ba"], places["order_sink"], "Order", arcs, is_variable=True)
-    
+
     connect(places["box_source"], transitions["d"], "Box", arcs, is_variable=False)
     connect(transitions["d"], places["b2"], "Box", arcs, is_variable=False)
     connect(places["b2"], transitions["s"], "Box", arcs, is_variable=True)
     connect(transitions["s"], places["box_sink"], "Box", arcs, is_variable=True)
-    
-    initial_marking = OCMarking({
-        places["container_source"]: Counter(["c1_0"]),
-        places["order_source"]: Counter(["o1_0"]),
-        places["box_source"]: Counter(["b1_0"]),
-    })
 
-    final_marking = OCMarking({
-        places["container_sink"]: Counter(["c1_0"]),
-        places["order_sink"]: Counter(["o1_0"]),
-        places["box_sink"]: Counter(["b1_0"]),
-    })
-    
+    initial_marking = OCMarking(
+        {
+            places["container_source"]: Counter(["c1_0"]),
+            places["order_source"]: Counter(["o1_0"]),
+            places["box_source"]: Counter(["b1_0"]),
+        }
+    )
+
+    final_marking = OCMarking(
+        {
+            places["container_sink"]: Counter(["c1_0"]),
+            places["order_sink"]: Counter(["o1_0"]),
+            places["box_sink"]: Counter(["b1_0"]),
+        }
+    )
+
     ocpn = OCPetriNet(
         name,
         places=list(places.values()),
@@ -932,9 +1168,10 @@ def ocpn_running_ex():
         initial_marking=initial_marking,
         final_marking=final_marking,
     )
-    
+
     return ocpn
-    
+
+
 def occn_running_ex():
     marker_groups = {
         "START_Container": {
@@ -1028,7 +1265,12 @@ def occn_running_ex():
                 [("s", "Order", (1, -1), 0)],
             ],
             "omg": [
-                [("ti", "Order", (1, 1), 1), ("si", "Order", (0, -1), 1), ("da", "Order", (1, 1), 2), ("ba", "Order", (0, -1), 2)],
+                [
+                    ("ti", "Order", (1, 1), 1),
+                    ("si", "Order", (0, -1), 1),
+                    ("da", "Order", (1, 1), 2),
+                    ("ba", "Order", (0, -1), 2),
+                ],
             ],
         },
         "ti": {
@@ -1075,10 +1317,8 @@ def occn_running_ex():
 
     occn = create_oc_causal_net(marker_groups)
     return occn
-    
-    
-    
-    
+
+
 def connect(source, target, object_type, arcs, *, is_variable=False):
     """
     Create an OCPetriNet.Arc, attach it to source/target, store it in `arcs`, and return it.
@@ -1088,6 +1328,7 @@ def connect(source, target, object_type, arcs, *, is_variable=False):
     target.add_in_arc(arc)
     arcs.append(arc)
     return arc
+
 
 if __name__ == "__main__":
     evaluation()

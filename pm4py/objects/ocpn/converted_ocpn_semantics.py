@@ -57,6 +57,10 @@ class ConvertedOCPetriNetSemantics(OCPetriNetSemantics[N]):
             - "start_input_places": Mapping from start activities to their input place in the OCPN
             - "end_output_places": Mapping from end activities to their output place in the OCPN
             - "subnet": Mapping from activities to the subnet of the OCPN that corresponds to the activity (including the global binding place)
+            - "transition_to_act": Mapping from transitions in the OCPN to the corresponding activity in the OCCN (corresponding is the activity in which subnet the transition is part of)
+            - "transition_to_succ_arc_place": Mapping from transitions in the OCPN to (successor, object type) if they produce tokens for an arc place (activity, object type, successor activity) or None otherwise.
+            - "transition_to_pred_arc_place": Mapping from transitions in the OCPN to (predecessor, object type) if they consume tokens from an arc place (predecessor, object type, activity) or None otherwise.
+            - "transition_type": Mapping from transitions to "img" if it is part of an input marker group, "act" if it is an activity in the OCCN, or "omg" if it is part of an output marker group.
             - "arc_places": Mapping from (activity, object type, successor activity) to the corresponding arc place in the OCPN
             - "global_binding_place": The global binding place in the OCPN
         """
@@ -70,6 +74,7 @@ class ConvertedOCPetriNetSemantics(OCPetriNetSemantics[N]):
         start_input_places = {}
         end_output_places = {}
         arc_places = {}
+        transition_to_act = {}
         global_binding_place = None
 
         binding_object_type = "_binding"
@@ -113,12 +118,34 @@ class ConvertedOCPetriNetSemantics(OCPetriNetSemantics[N]):
                 end_activities,
                 start_input_places,
                 end_output_places,
+                transition_to_act,
             )
+        arc_places_inverse = {
+            place: (pred, ot, succ) for (pred, ot, succ), place in arc_places.items()
+        }
+        transition_to_pred_arc_place, transition_to_succ_arc_place = (
+            cls._get_transition_to_arc_place(ocpn.transitions, arc_places_inverse)
+        )
+
+        transition_type = cls._get_transition_types(
+            ocpn,
+            occn.activities,
+            arc_places,
+            start_activities,
+            end_activities,
+            start_input_places,
+            end_output_places,
+            global_binding_place,
+        )
 
         return {
             "start_activities": start_activities,
             "end_activities": end_activities,
             "arc_places": arc_places,
+            "transition_to_act": transition_to_act,
+            "transition_to_pred_arc_place": transition_to_pred_arc_place,
+            "transition_to_succ_arc_place": transition_to_succ_arc_place,
+            "transition_type": transition_type,
             "subnet": subnets,
             "global_binding_place": global_binding_place,
         }
@@ -133,6 +160,7 @@ class ConvertedOCPetriNetSemantics(OCPetriNetSemantics[N]):
         end_activities: set,
         start_input_places: dict,
         end_output_places: dict,
+        transition_to_act: dict,
     ) -> OCPetriNet:
         """
         Computes the subnet of ocpn that contains all places and transitions
@@ -156,6 +184,9 @@ class ConvertedOCPetriNetSemantics(OCPetriNetSemantics[N]):
             Mapping from start activities to their input place in the OCPN
         end_output_places: dict
             Mapping from end activities to their output place in the OCPN
+        transition_to_act: dict
+            Mapping from transitions in the OCPN to the corresponding activity in the OCCN.
+            As a side effect, this function computes this dict for all transitions with the given activity as value.
 
         Returns
         -------
@@ -166,22 +197,14 @@ class ConvertedOCPetriNetSemantics(OCPetriNetSemantics[N]):
         transitions = set()
         arcs = set()
 
-        # source arc places towards activity
-        source_arc_places = set()
-        # target arc places from activity
-        target_arc_places = set()
-        for (source, _, target), place in arc_places.items():
-            if source == activity:
-                target_arc_places.add(place)
-            elif target == activity:
-                source_arc_places.add(place)
-
-        if activity in start_activities:
-            # has no source arc places
-            source_arc_places = set([start_input_places[activity]])
-        if activity in end_activities:
-            # has no target arc places
-            target_arc_places = set([end_output_places[activity]])
+        source_arc_places, target_arc_places = cls._get_source_target_arc_places(
+            activity,
+            arc_places,
+            start_activities,
+            end_activities,
+            start_input_places,
+            end_output_places,
+        )
 
         places.update(source_arc_places)
         places.update(target_arc_places)
@@ -209,6 +232,7 @@ class ConvertedOCPetriNetSemantics(OCPetriNetSemantics[N]):
                         places.add(target)
                     elif isinstance(target, OCPetriNet.Transition):
                         transitions.add(target)
+                        transition_to_act[target] = activity
 
                     to_visit.add(target)
                     visited.add(target)
@@ -221,6 +245,183 @@ class ConvertedOCPetriNetSemantics(OCPetriNetSemantics[N]):
         )
 
         return subnet
+
+    @classmethod
+    def _get_source_target_arc_places(
+        cls,
+        activity,
+        arc_places,
+        start_activities,
+        end_activities,
+        start_input_places,
+        end_output_places,
+    ):
+        """
+        Returns source and target arc places for the given activity as a set.
+        """
+        # source arc places towards activity
+        source_arc_places = set()
+        # target arc places from activity
+        target_arc_places = set()
+        for (source, _, target), place in arc_places.items():
+            if source == activity:
+                target_arc_places.add(place)
+            elif target == activity:
+                source_arc_places.add(place)
+
+        if activity in start_activities:
+            # has no source arc places
+            source_arc_places = set([start_input_places[activity]])
+        if activity in end_activities:
+            # has no target arc places
+            target_arc_places = set([end_output_places[activity]])
+
+        return source_arc_places, target_arc_places
+
+    @classmethod
+    def _get_transition_to_arc_place(cls, transitions, arc_places_inverse):
+        """
+        Computes a mapping from transitions in the OCPN to (successor, object type)
+        if they produce tokens for an arc place (activity, object type, successor activity)
+        or None otherwise, and a mapping from transitions to (predecessor, object type)
+        if they consume tokens from an arc place (predecessor, object type, activity) or None otherwise.
+        A transition produces / consumes tokens for / from a maximum of 1 arc place.
+
+        Parameters
+        ----------
+        transitions: list
+            List of transitions in the OCPN
+        arc_places_inverse: dict
+            Mapping from places to (pred, ot, succ) for the arc places
+
+        Returns
+        -------
+        tuple
+            A tuple containing two dictionaries:
+            - transition_to_pred_arc_place: Mapping from transitions to (predecessor, object type)
+              if they consume tokens from an arc place (predecessor, object type, activity)
+            - transition_to_succ_arc_place: Mapping from transitions to (successor, object type)
+              if they produce tokens for an arc place (activity, object type, successor activity)
+            If a transition does not produce or consume tokens for an arc place, the value is None
+        """
+        transition_to_pred_arc_place = {t: None for t in transitions}
+        transition_to_succ_arc_place = {t: None for t in transitions}
+
+        # Predecessor arc places
+        for transition in transitions:
+            for arc in transition.in_arcs:
+                (pred, ot, _) = arc_places_inverse.get(arc.source, (None, None, None))
+                if pred is not None and ot is not None:
+                    transition_to_pred_arc_place[transition] = (pred, ot)
+                    break
+
+        # Successor arc places
+        for transition in transitions:
+            for arc in transition.out_arcs:
+                (_, ot, succ) = arc_places_inverse.get(arc.target, (None, None, None))
+                if ot is not None and succ is not None:
+                    transition_to_succ_arc_place[transition] = (succ, ot)
+                    break
+
+        return transition_to_pred_arc_place, transition_to_succ_arc_place
+
+    @classmethod
+    def _get_transition_types(
+        cls,
+        ocpn,
+        activities,
+        arc_places,
+        start_activities,
+        end_activities,
+        start_input_places,
+        end_output_places,
+        global_binding_place,
+    ):
+        """
+        Computes a mapping from transitions to
+        - "img" if it is part of an input marker group,
+        - "act" if it is an activity in the OCCN, or
+        - "omg" if it is part of an output marker group.
+
+        Parameters
+        ----------
+        ocpn
+            The object-centric Petri net
+        activities
+            Set of activities in the OCPN
+        arc_places: dict
+            Mapping from (activity, object type, successor activity) to the corresponding arc place in the OCPN
+        start_activities: set
+            Set of start activities in the OCCN
+        end_activities: set
+            Set of end activities in the OCCN
+        start_input_places: dict
+            Mapping from start activities to their input place in the OCPN
+        end_output_places: dict
+            Mapping from end activities to their output place in the OCPN
+        global_binding_place: OCPetrinet.Place
+            The global binding place in the OCPN
+
+        Returns
+        -------
+        dict
+            Mapping from transitions to "img", "act", or "omg".
+        """
+        transition_types = dict()
+        transitions = {t.name: t for t in ocpn.transitions}
+
+        for activity in activities:
+            transition_types[transitions[activity]] = "act"
+
+            source_arc_places, target_arc_places = cls._get_source_target_arc_places(
+                activity,
+                arc_places,
+                start_activities,
+                end_activities,
+                start_input_places,
+                end_output_places,
+            )
+
+            # BFS from source arc places to the activity to get all img transitions
+            to_visit = set(source_arc_places)
+            visited = set()
+            visited.update(to_visit)
+            # we don't go beyond the activity
+            visited.add(transitions[activity])
+
+            while to_visit:
+                current = to_visit.pop()
+
+                for arc in current.out_arcs:
+                    target = arc.target
+                    if target not in visited:
+                        if isinstance(target, OCPetriNet.Transition):
+                            transition_types[target] = "img"
+                        to_visit.add(target)
+                        visited.add(target)
+
+            # BFS from activity to its target arc places to get all omg transitions
+            to_visit = set([transitions[activity]])
+            visited = set()
+            visited.update(to_visit)
+            # we don't go beyond the target arc places
+            visited.update(target_arc_places)
+            # we do not go beyond the global binding place
+            visited.add(global_binding_place)
+
+            while to_visit:
+                current = to_visit.pop()
+
+                for arc in current.out_arcs:
+                    target = arc.target
+                    if target not in visited:
+                        if isinstance(target, OCPetriNet.Transition):
+                            transition_types[target] = "omg"
+                        to_visit.add(target)
+                        visited.add(target)
+                            
+
+        return transition_types
 
     @classmethod
     def replay_occn_sequence(
@@ -355,7 +556,9 @@ class ConvertedOCPetriNetSemantics(OCPetriNetSemantics[N]):
         # If the sequence is replayable, the marking now only contains tokens
         # in arc places towards end activities
         # Check if we can reach a marking with tokens only in final places
-        success = cls._final_marking_reachable(marking, final_marking, subnets, global_binding_place)
+        success = cls._final_marking_reachable(
+            marking, final_marking, subnets, global_binding_place
+        )
         return success
 
     @classmethod
@@ -636,7 +839,7 @@ class ConvertedOCPetriNetSemantics(OCPetriNetSemantics[N]):
                 return False
 
             # Check if we can reach a final marking using the subnet of the end activity
-            parameters = {"exists_trace": True, "is_final_func": _is_final}
+            parameters = {"exists_trace": True, "is_final_func": _is_final_leq}
             expected_tokens_w_binding = cls._add_binding_token(
                 submarking, global_binding_place
             )
@@ -673,22 +876,152 @@ class ConvertedOCPetriNetSemantics(OCPetriNetSemantics[N]):
         """
         return marking + OCMarking({global_binding_place: {"_binding": 1}})
 
-
-def _is_final(marking: OCMarking, final_marking: OCMarking) -> bool:
+    @classmethod
+    def get_original_occn_trace(
+        cls, trace, idx_to_transition, id_to_obj_type, precomputed
+    ):
         """
-        A marking is considered final if it only contains objects in the places
-        that are part of the final marking, and all other places are empty.
+        Converts a trace from the converted OCPN to the corresponding trace for the original OCCN.
 
         Parameters
         ----------
-        marking: OCMarking
-            The marking to check
-        final_marking: OCMarking
-            The final marking to compare against
+        occn : OCCausalNet
+            The OCCausalNet object to replay the traces on.
+        trace : list of tuples
+            The trace to replay
+        idx_to_transition : dict
+            A mapping from transition indices to transition objects in the OCPN.
+        id_to_obj_type : dict
+            A mapping from object IDs to their respective object types.
+        precomputed : dict
+            Precomputed parameters for the replay.
 
         Returns
         -------
-        bool
-            True if the marking is final, False otherwise
+        tuple
+            A tuple representing the OCCN sequence, where each element is a tuple of the form
+            (activity, consumed_objects, produced_objects).
         """
-        return marking.places <= final_marking.places
+        transition_to_act = precomputed["transition_to_act"]
+        transition_to_pred_arc_place = precomputed["transition_to_pred_arc_place"]
+        transition_to_succ_arc_place = precomputed["transition_to_succ_arc_place"]
+        transition_type = precomputed["transition_type"]
+
+        # the trace has a block-structure where all bindings of transitions in one block
+        # correspond to the same activity
+
+        occn_sequence = []
+        # Properties of current block
+        first_transition = idx_to_transition[trace[0][0]]
+        block_activity = transition_to_act[first_transition]
+        last_type = transition_type[first_transition]
+        block_consumed = defaultdict(lambda: defaultdict(set))
+        block_produced = defaultdict(lambda: defaultdict(set))
+
+        for event in trace:
+            transition = idx_to_transition[event[0]]
+            t_type = transition_type[transition]
+            activity = transition_to_act[transition]
+
+            # Check if we started a new block
+            if (
+                activity != block_activity
+                or (last_type == "omg" and t_type == "act")
+                or (last_type == "omg" and t_type == "img")
+                or (last_type == "act" and t_type == "img")
+            ):
+                # Add the previous block to the OCCN sequence
+                cls._add_to_occn_sequence(
+                    block_activity, block_consumed, block_produced, occn_sequence
+                )
+
+                # Reset for the new block
+                block_activity = activity
+                block_consumed = defaultdict(lambda: defaultdict(set))
+                block_produced = defaultdict(lambda: defaultdict(set))
+
+            last_type = t_type
+
+            # we are interested in gathering the objects consumed and produced
+            # only if the transition consumes or produces objects from / for arc places
+            if transition_to_pred_arc_place[transition]:
+                pred, ot = transition_to_pred_arc_place[transition]
+                objects = event[1]
+                for object_id in objects:
+                    object_type = id_to_obj_type[object_id]
+                    if ot == object_type:  # omit the binding object type
+                        block_consumed[pred][ot].add(object_id)
+
+            if transition_to_succ_arc_place[transition]:
+                succ, ot = transition_to_succ_arc_place[transition]
+                objects = event[1]
+                for object_id in objects:
+                    object_type = id_to_obj_type[object_id]
+                    if ot == object_type:  # omit the binding object type
+                        block_produced[succ][ot].add(object_id)
+
+        # Add last block to the OCCN sequence
+        cls._add_to_occn_sequence(
+            block_activity, block_consumed, block_produced, occn_sequence
+        )
+        # Convert to tuple
+        return tuple(occn_sequence)
+
+    @classmethod
+    def _add_to_occn_sequence(
+        cls, block_activity, block_consumed, block_produced, occn_sequence
+    ):
+        """
+        Adds a block to the OCCN sequence.
+
+        Parameters
+        ----------
+        block_activity: str
+            The activity of the block
+        block_consumed: dict
+            The consumed objects in the block
+        block_produced: dict
+            The produced objects in the block
+        occn_sequence: list
+            The OCCN sequence to add the block to
+
+        Returns
+        -------
+        None
+        """
+        if not block_consumed:
+            block_consumed = None
+        if not block_produced:
+            block_produced = None
+        if not block_consumed and not block_produced:
+            # If both consumed and produced are empty, we skip this block
+            # this happens when just binding tokens were moved
+            return
+
+        occn_sequence.append(
+            (
+                block_activity,
+                block_consumed,
+                block_produced,
+            )
+        )
+
+
+def _is_final_leq(marking: OCMarking, final_marking: OCMarking) -> bool:
+    """
+    A marking is considered final if it only contains objects in the places
+    that are part of the final marking, and all other places are empty.
+
+    Parameters
+    ----------
+    marking: OCMarking
+        The marking to check
+    final_marking: OCMarking
+        The final marking to compare against
+
+    Returns
+    -------
+    bool
+        True if the marking is final, False otherwise
+    """
+    return marking.places <= final_marking.places
