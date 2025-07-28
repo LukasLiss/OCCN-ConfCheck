@@ -166,7 +166,7 @@ def apply(
             id_to_object_type,
         )
     else:
-        return _valid_sequences_to_ocel()
+        return _valid_sequences_to_ocel(valid_sequences_iter, id_to_activity, id_to_object_type, parameters)
 
 
 def _populate_memo_graph(
@@ -584,9 +584,9 @@ def _valid_sequences_to_ocel(valid_sequences_iter, idx_to_act, idx_to_ot, parame
     for sequence in valid_sequences_iter:
         # For each sequence, create events and objects
         for binding in sequence:
-            activity_id = binding.activity_id
-            consumed = binding.consumed
-            produced = binding.produced
+            activity_id = binding[0]
+            consumed = binding[1]
+            produced = binding[2]
 
             act = idx_to_act[activity_id]
 
@@ -610,7 +610,7 @@ def _valid_sequences_to_ocel(valid_sequences_iter, idx_to_act, idx_to_ot, parame
             # Create objects and relations
             # consumed and produced contain the same objects; we only need to create them once
             for _, ot_to_obj in consumed:
-                for ot_id, objects in ot_to_obj.items():
+                for ot_id, objects in ot_to_obj:
                     obj_type = idx_to_ot[ot_id]
                     for obj_id in objects:
                         # Add object
