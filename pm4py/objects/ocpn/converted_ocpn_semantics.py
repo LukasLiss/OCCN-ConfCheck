@@ -419,7 +419,6 @@ class ConvertedOCPetriNetSemantics(OCPetriNetSemantics[N]):
                             transition_types[target] = "omg"
                         to_visit.add(target)
                         visited.add(target)
-                            
 
         return transition_types
 
@@ -431,6 +430,8 @@ class ConvertedOCPetriNetSemantics(OCPetriNetSemantics[N]):
         final_marking: OCMarking,
         id_to_activity,
         id_to_object_type,
+        memo_reachable: set,
+        memo_unreachable: set,
         precomputed,
     ):
         """
@@ -452,6 +453,10 @@ class ConvertedOCPetriNetSemantics(OCPetriNetSemantics[N]):
             Mapping from object IDs to object types
         precomputed: dict
             Precomputed parameters for the replay obtained from `precompute_ocpn_replay_params`
+        memo_reachable: set
+            A set to memoize bindings that could be simulated successfully.
+        memo_unreachable: set
+            A set to memoize bindings that could not be simulated successfully.
 
         Returns
         -------
@@ -540,6 +545,8 @@ class ConvertedOCPetriNetSemantics(OCPetriNetSemantics[N]):
                 target_tokens,
                 subnets,
                 global_binding_place,
+                memo_reachable,
+                memo_unreachable,
             )
             if marking is None:
                 return False
@@ -550,6 +557,8 @@ class ConvertedOCPetriNetSemantics(OCPetriNetSemantics[N]):
             initial_marking,
             subnets,
             global_binding_place,
+            memo_reachable,
+            memo_unreachable
         ):
             return False
 
@@ -568,6 +577,8 @@ class ConvertedOCPetriNetSemantics(OCPetriNetSemantics[N]):
         initial_marking: OCMarking,
         subnets: dict,
         global_binding_place: OCPetriNet.Place,
+        memo_reachable: set,
+        memo_unreachable: set,
     ):
         """
         Checks if the tokens assumed to be produced by the start activities
@@ -586,6 +597,10 @@ class ConvertedOCPetriNetSemantics(OCPetriNetSemantics[N]):
             Mapping from activity names to their respective subnets in the OCPN
         global_binding_place: OCPetriNet.Place
             The global binding place in the OCPN.
+        memo_reachable: set
+            A set to memoize bindings that could be simulated successfully.
+        memo_unreachable: set
+            A set to memoize bindings that could not be simulated successfully.
 
         Returns
         -------
@@ -615,6 +630,8 @@ class ConvertedOCPetriNetSemantics(OCPetriNetSemantics[N]):
                 target_tokens,
                 subnets,
                 global_binding_place,
+                memo_reachable,
+                memo_unreachable
             ):
                 return False
 
@@ -738,6 +755,8 @@ class ConvertedOCPetriNetSemantics(OCPetriNetSemantics[N]):
         target_tokens: OCMarking,
         subnets: dict,
         global_binding_place: OCPetriNet.Place,
+        memo_reachable: set,
+        memo_unreachable: set,
     ) -> OCMarking:
         """
         Simulate the binding of an OCCN activity in the OCPN.
@@ -762,6 +781,10 @@ class ConvertedOCPetriNetSemantics(OCPetriNetSemantics[N]):
             Mapping from activity names to their respective subnets in the OCPN.
         global_binding_place: OCPetriNet.Place
             The global binding place in the OCPN, where the _binding token is added.
+        memo_reachable: set
+            A set to memoize bindings that could be simulated successfully.
+        memo_unreachable: set
+            A set to memoize bindings that could not be simulated successfully.
 
         Returns
         -------
@@ -780,14 +803,36 @@ class ConvertedOCPetriNetSemantics(OCPetriNetSemantics[N]):
         )
 
         # Check if target_tokens is reachable from expected_tokens in the subnet
-        parameters = {"exists_trace": True}
-        success = ocpn_extensive_playout(
-            ocpn_subnet, expected_tokens_w_binding, target_tokens_w_binding, parameters
-        )
-
-        if not success:
-            # We cannot reach target_tokens from expected_tokens
+        if (act, expected_tokens_w_binding, target_tokens_w_binding) in memo_reachable:
+            # we know the marking is reachable
+            pass
+        elif (
+            act,
+            expected_tokens_w_binding,
+            target_tokens_w_binding,
+        ) in memo_unreachable:
+            # we know the marking is not reachable
             return None
+        else:
+            # check if the marking is reachable
+            parameters = {"exists_trace": True}
+            success = ocpn_extensive_playout(
+                ocpn_subnet,
+                expected_tokens_w_binding,
+                target_tokens_w_binding,
+                parameters,
+            )
+
+            if success:
+                memo_reachable.add(
+                    (act, expected_tokens_w_binding, target_tokens_w_binding)
+                )
+            else:
+                # We cannot reach target_tokens from expected_tokens
+                memo_unreachable.add(
+                    (act, expected_tokens_w_binding, target_tokens_w_binding)
+                )
+                return None
 
         # We can reach target_tokens from expected_tokens, so we can create the correct marking
         marking -= expected_tokens

@@ -36,13 +36,14 @@ def evaluation():
 
     # ocels = ["ContainerLogistics.json"]
     ocels = ["running_ex_ocpn"]
+    config_id = 1
     time_budget = 14 * 60 * 60  # seconds
 
     # Discover OCPN -> convert to OCCN -> play-out and replay for both directions
-    # eval_ocpn(ocels, time_budget)
+    #eval_ocpn(ocels, time_budget)
 
     # Discover OCCN -> convert to OCPN -> play-out and replay for both directions
-    eval_occn(ocels, time_budget)
+    eval_occn(ocels, time_budget, config_id=config_id)
 
 
 def eval_ocpn(ocels, time_budget):
@@ -70,13 +71,13 @@ def eval_ocpn(ocels, time_budget):
         )
 
         # Playout OCPN and replay on OCCN
-        # playout_ocpn_replay_on_converted_occn(ocpn, occn, ocel_name, time_budget)
+        playout_ocpn_replay_on_converted_occn(ocpn, occn, ocel_name, time_budget)
 
         # Playout OCCN and replay on original OCPN
-        playout_converted_occn_replay_on_ocpn(ocpn, occn, ocel_name, time_budget)
+        #playout_converted_occn_replay_on_ocpn(ocpn, occn, ocel_name, time_budget)
 
 
-def eval_occn(ocels, time_budget):
+def eval_occn(ocels, time_budget, config_id):
     """
     Discover OCCN, convert to OCPN, and perform play-out and replay for both directions.
 
@@ -86,6 +87,8 @@ def eval_occn(ocels, time_budget):
         List of OCEL names to evaluate.
     time_budget : int
         Time budget for each evaluation in seconds.
+    config_id : int
+        Configuration ID to use for the play-out parameters.
     """
     for ocel_name in ocels:
 
@@ -98,10 +101,10 @@ def eval_occn(ocels, time_budget):
         ocpn = occn_converter.apply(occn, variant=occn_converter.Variants.TO_OCPN)
 
         # Playout OCCN and replay on OCPN
-        #playout_occn_replay_on_converted_ocpn(occn, ocpn, ocel_name, time_budget)
+        playout_occn_replay_on_converted_ocpn(occn, ocpn, ocel_name, time_budget, config_id=config_id)
 
         # Playout OCPN and replay on original OCCN
-        playout_ocpn_replay_on_original_occn(ocpn, occn, ocel_name, time_budget)
+        #playout_ocpn_replay_on_original_occn(ocpn, occn, ocel_name, time_budget)
 
 
 def playout_parameters(ocel_name, config_id, playout_mode):
@@ -174,7 +177,7 @@ def playout_parameters(ocel_name, config_id, playout_mode):
         elif config_id == 1:  # smallest example
             original_ocpn_branching_factor = 1.2
             converted_occn_branching_factor = 1.1
-            original_occn_branching_factor = 1.2
+            original_occn_branching_factor = 100
             converted_ocpn_branching_factor = 1.1
             max_bindings_per_activity = 100
             object_numbers = {
@@ -481,12 +484,10 @@ def _execute_ocpn_playout_and_replay_on_occn(
         while stats.passed_time < time_budget:
             iter_start_time = time.time()
 
-            print("PLAYOUT") # TODO REMOVE
             # Perform play-out
             (traces, idx_to_transition, id_to_obj_type) = playout_ocpn_extensive(
                 ocpn, initial_marking, final_marking, parameters=parameters
             )
-            print("REPLAY") # TODO REMOVE
 
             # Perform replay
             failed_replays = _perform_replay_on_occn(
@@ -590,9 +591,6 @@ def playout_occn_replay_on_converted_ocpn(
     # Pre-compute additional parameters for replay
     precomputed = ConvertedOCPetriNetSemantics.precompute_ocpn_replay_params(ocpn, occn)
 
-    if ocel_name == "running_ex_ocpn":
-        config_id = 0
-
     _execute_occn_playout_and_replay_on_ocpn(
         ocpn=ocpn,
         occn=occn,
@@ -648,6 +646,10 @@ def _execute_occn_playout_and_replay_on_ocpn(
     parameters = config["parameters"]
     ocpn_initial_marking = config["initial_marking"]
     ocpn_final_marking = config["final_marking"]
+    
+    # Memo sets used for playout mode "occn_replay_on_converted_ocpn"
+    memo_reachable = set()
+    memo_unreachable = set()
 
     # --- UI and Statistics Initialization ---
     console = Console()
@@ -679,6 +681,8 @@ def _execute_occn_playout_and_replay_on_ocpn(
                 valid_sequences_iter,
                 id_to_activity,
                 id_to_object_type,
+                memo_reachable=memo_reachable,
+                memo_unreachable=memo_unreachable,
                 precomputed=precomputed,
             )
             no_sequences = failed_replays + successful_replays
@@ -700,6 +704,8 @@ def _perform_replay_on_ocpn(
     sequences_iter,
     id_to_activity,
     id_to_object_type,
+    memo_reachable=None,
+    memo_unreachable=None,
     precomputed=None,
 ):
     """
@@ -720,6 +726,9 @@ def _perform_replay_on_ocpn(
             id_to_object_type,
         )
     elif playout_mode == "occn_replay_on_converted_ocpn":
+        assert precomputed is not None, "Precomputed parameters are required for this playout mode."
+        assert memo_reachable is not None, "Memoization for reachable places is required for this playout mode."
+        assert memo_unreachable is not None, "Memoization for unreachable places is required for this playout mode."
         failed_replays, successful_replays = replay_on_converted_ocpn(
             ocpn,
             initial_marking,
@@ -727,6 +736,8 @@ def _perform_replay_on_ocpn(
             sequences_iter,
             id_to_activity,
             id_to_object_type,
+            memo_reachable,
+            memo_unreachable,
             precomputed=precomputed,
         )
         return failed_replays, successful_replays
@@ -811,8 +822,10 @@ def replay_on_original_occn(occn, traces, idx_to_transition, id_to_obj_type, pre
         # Replay the OCCN sequence
         if not OCCausalNetSemantics.replay(occn, occn_sequence):
             failed_replays += 1
-        
-    return failed_replays             
+
+    return failed_replays
+
+
 def replay_on_original_ocpn(
     ocpn,
     initial_marking,
@@ -870,6 +883,8 @@ def replay_on_converted_ocpn(
     sequences_iter,
     id_to_activity,
     id_to_object_type,
+    memo_reachable,
+    memo_unreachable,
     precomputed,
 ):
     """
@@ -891,6 +906,10 @@ def replay_on_converted_ocpn(
         A mapping from activity IDs to their respective activity labels.
     id_to_object_type : dict
         A mapping from object IDs to their respective object types.
+    memo_reachable: set
+        A set to memoize bindings that could be simulated successfully.
+    memo_unreachable: set
+        A set to memoize bindings that could not be simulated successfully.
     precomputed : dict
         Precomputed parameters for the replay.
 
@@ -912,6 +931,8 @@ def replay_on_converted_ocpn(
             final_marking,
             id_to_activity,
             id_to_object_type,
+            memo_reachable,
+            memo_unreachable,
             precomputed,
         ):
             successful_replays += 1
@@ -1332,3 +1353,5 @@ def connect(source, target, object_type, arcs, *, is_variable=False):
 
 if __name__ == "__main__":
     evaluation()
+
+
