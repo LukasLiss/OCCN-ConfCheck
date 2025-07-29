@@ -63,9 +63,9 @@ def playout_parameters(ocel_name, config_id, playout_mode):
             converted_ocpn_branching_factor = 1.5
             max_bindings_per_activity = 10
             object_numbers = {
-                "Container": 1,
-                "Order": 4,
-                "Box": 1,
+                "Container": 2,
+                "Order": 3,
+                "Box": 0,
             }
 
         elif config_id == 1:  # smallest example

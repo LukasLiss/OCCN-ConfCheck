@@ -132,7 +132,8 @@ def occn_running_ex():
     marker_groups = {
         "START_Container": {
             "omg": [
-                [("c", "Container", (1, 1), 0), ("i", "Container", (1, 1), 0)],
+                [("c", "Container", (1, 1), 0)],
+                [("f", "Container", (1, 1), 0)]
             ],
         },
         "c": {
@@ -143,7 +144,7 @@ def occn_running_ex():
                 [("e", "Container", (1, 1), 0)],
             ],
         },
-        "i": {
+        "f": {
             "img": [
                 [("START_Container", "Container", (1, 1), 0)],
             ],
@@ -153,10 +154,10 @@ def occn_running_ex():
         },
         "e": {
             "img": [
-                [("c", "Container", (1, 1), 0), ("i", "Container", (1, 1), 0)],
+                [("c", "Container", (1, 1), 0), ("f", "Container", (1, -1), 0)],
             ],
             "omg": [
-                [("s", "Container", (1, 1), 0)],
+                [("s", "Container", (1, -1), 0)],
             ],
         },
         "START_Order": {

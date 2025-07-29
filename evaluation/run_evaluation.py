@@ -31,7 +31,7 @@ def evaluation():
 
     # ocels = ["ContainerLogistics.json"]
     ocels = ["running_ex_ocpn"]
-    config_id = 1
+    config_id = 0
     time_budget = 14 * 60 * 60  # seconds
 
     # Discover OCPN -> convert to OCCN -> play-out and replay for both directions
