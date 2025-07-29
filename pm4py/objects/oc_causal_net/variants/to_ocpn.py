@@ -547,8 +547,8 @@ def transform_input_object_type_group(
     # we skip the key groups for input marker groups, as we ignore input marker keys
     # grab all markers of the object type group
     markers = [marker for key_group in object_type_group[1] for marker in key_group[1]]
-    # sort them by min_count and max_count, effectively putting markers with c=(1,1) first
-    markers.sort(key=lambda m: (m.min_count, m.max_count))
+    # sort them by by c=(1,1) and then by min_count and max_count
+    markers.sort(key=lambda m: (m.min_count != 1, m.max_count != 1, m.min_count, m.max_count))
 
     # proceed with the construct
     ot = object_type_group[0]
@@ -597,6 +597,7 @@ def transform_input_object_type_group(
             is_output_marker=False,
             key_group_length=1,  # does not matter for input markers
             is_last_key_group=True,  # does not matter for input markers
+            is_first_marker=i==0
         )
 
         # next input and output binding places
@@ -769,7 +770,8 @@ def transform_output_key_group(
             is_output_marker=True,
             key_group_length=len(key_group[1]),
             is_last_key_group=is_last_key_group,
-        )
+            is_first_marker=True 
+         )
     else:
         silent_id = get_next_id()
         if is_last_key_group:
@@ -820,6 +822,7 @@ def transform_output_key_group(
                     is_output_marker=True,
                     key_group_length=len(key_group[1]),
                     is_last_key_group=is_last_key_group,
+                    is_first_marker=i == 0,
                 )
 
                 # next input and output binding places
@@ -993,6 +996,7 @@ def transform_marker(
     is_output_marker,
     key_group_length,
     is_last_key_group,
+    is_first_marker
 ):
     """
     Transforms a marker into a construct of places, transitions, and arcs in the OCPN.
@@ -1019,16 +1023,18 @@ def transform_marker(
     p_output_binding: OCPetriNet.Place
         The output binding place for the marker construct.
     is_output_marker: bool
-        Indicates if the marker is part of an output marker group.
+        True if the marker is part of an output marker group, False if it is part of an input marker group.
     key_group_length: int
         The length of the key group to which the marker belongs. Does not matter for input markers.
     is_last_key_group: bool
         Indicates if the marker is in the last key group of its object type group. Does not matter for input markers.
+    is_first_marker: bool
+        Indicates if the marker is the first marker in its input object type group. Does not matter for output markers.
     """
     # id to avoid name clashes
     silent_id = get_next_id()
 
-    # 4 cases can occur
+    # 6 cases can occur
     if marker.min_count == 1 and marker.max_count == 1:
         if is_output_marker and not is_last_key_group and key_group_length == 1:
             # case 1: (1,1) marker with duplication
@@ -1125,8 +1131,103 @@ def transform_marker(
                 ),
                 arcs,
             )
+        elif (not is_output_marker) and (not is_first_marker):
+            # case 2: (1,1) marker with unification
+            # places
+            for p in [p_input, p_output, p_input_binding, p_output_binding]:
+                add_place(p, places, places_names)
+            # transitions
+            t1 = OCPetriNet.Transition(
+                name=f"{SILENT_TRANSITION_PREFIX}#{silent_id}_1",
+            )
+            t2 = OCPetriNet.Transition(
+                name=f"{SILENT_TRANSITION_PREFIX}#{silent_id}_2",
+            )
+            transitions.update([t1, t2])
+            # arcs
+            add_arc(
+                OCPetriNet.Arc(
+                    source=p_input,
+                    target=t1,
+                    object_type=marker.object_type,
+                    is_variable=False,
+                ),
+                arcs,
+            )
+            add_arc(
+                OCPetriNet.Arc(
+                    source=p_output,
+                    target=t1,
+                    object_type=marker.object_type,
+                    is_variable=False,
+                ),
+                arcs,
+            )
+            add_arc(
+                OCPetriNet.Arc(
+                    source=t1,
+                    target=p_output,
+                    object_type=marker.object_type,
+                    is_variable=False,
+                ),
+                arcs,
+            )
+            add_arc(
+                OCPetriNet.Arc(
+                    source=p_input,
+                    target=t2,
+                    object_type=marker.object_type,
+                    is_variable=False,
+                ),
+                arcs,
+            )
+            add_arc(
+                OCPetriNet.Arc(
+                    source=t2,
+                    target=p_output,
+                    object_type=marker.object_type,
+                    is_variable=False,
+                ),
+                arcs,
+            )
+            add_arc(
+                OCPetriNet.Arc(
+                    source=p_input_binding,
+                    target=t1,
+                    object_type=BINDING_OBJECT_TYPE,
+                    is_variable=False,
+                ),
+                arcs,
+            )
+            add_arc(
+                OCPetriNet.Arc(
+                    source=p_input_binding,
+                    target=t2,
+                    object_type=BINDING_OBJECT_TYPE,
+                    is_variable=False,
+                ),
+                arcs,
+            )
+            add_arc(
+                OCPetriNet.Arc(
+                    source=t1,
+                    target=p_output_binding,
+                    object_type=BINDING_OBJECT_TYPE,
+                    is_variable=False,
+                ),
+                arcs,
+            )
+            add_arc(
+                OCPetriNet.Arc(
+                    source=t2,
+                    target=p_output_binding,
+                    object_type=BINDING_OBJECT_TYPE,
+                    is_variable=False,
+                ),
+                arcs,
+            )
         else:
-            # case 2: (1,1) marker without duplication
+            # case 2: (1,1) marker without duplication/unification
             # places
             places.update([p_input, p_output, p_input_binding, p_output_binding])
             # transitions
@@ -1174,7 +1275,7 @@ def transform_marker(
     else:
         # marker with min_count != 1 or max_count != 1
         if is_output_marker and not is_last_key_group and key_group_length == 1:
-            # case 3: square marker with duplication
+            # case 4: square marker with duplication
             # places
             px = OCPetriNet.Place(
                 name=f"p{BINDING_OBJECT_TYPE}#{silent_id}",
@@ -1271,8 +1372,106 @@ def transform_marker(
                 ),
                 arcs,
             )
+        elif (not is_output_marker) and (not is_first_marker):
+            # case 5: square marker with unification 
+            # places
+            px = OCPetriNet.Place(
+                name=f"p{BINDING_OBJECT_TYPE}#{silent_id}",
+                object_type=BINDING_OBJECT_TYPE,
+            )
+            places.update([p_input, p_output, p_input_binding, p_output_binding, px])
+            # transitions
+            t1 = OCPetriNet.Transition(
+                name=f"{SILENT_TRANSITION_PREFIX}#{silent_id}_1",
+            )
+            t2 = OCPetriNet.Transition(
+                name=f"{SILENT_TRANSITION_PREFIX}#{silent_id}_2",
+            )
+            transitions.update([t1, t2])
+            # arcs
+            add_arc(
+                OCPetriNet.Arc(
+                    source=p_input,
+                    target=t1,
+                    object_type=marker.object_type,
+                    is_variable=True,
+                ),
+                arcs,
+            )
+            add_arc(
+                OCPetriNet.Arc(
+                    source=p_output,
+                    target=t1,
+                    object_type=marker.object_type,
+                    is_variable=True,
+                ),
+                arcs,
+            )
+            add_arc(
+                OCPetriNet.Arc(
+                    source=t1,
+                    target=p_output,
+                    object_type=marker.object_type,
+                    is_variable=True,
+                ),
+                arcs,
+            )
+            add_arc(
+                OCPetriNet.Arc(
+                    source=p_input,
+                    target=t2,
+                    object_type=marker.object_type,
+                    is_variable=True,
+                ),
+                arcs,
+            )
+            add_arc(
+                OCPetriNet.Arc(
+                    source=t2,
+                    target=p_output,
+                    object_type=marker.object_type,
+                    is_variable=True,
+                ),
+                arcs,
+            )
+            add_arc(
+                OCPetriNet.Arc(
+                    source=p_input_binding,
+                    target=t1,
+                    object_type=BINDING_OBJECT_TYPE,
+                    is_variable=False,
+                ),
+                arcs,
+            )
+            add_arc(
+                OCPetriNet.Arc(
+                    source=t1,
+                    target=px,
+                    object_type=BINDING_OBJECT_TYPE,
+                    is_variable=False,
+                ),
+                arcs,
+            )
+            add_arc(
+                OCPetriNet.Arc(
+                    source=px,
+                    target=t2,
+                    object_type=BINDING_OBJECT_TYPE,
+                    is_variable=False,
+                ),
+                arcs,
+            )
+            add_arc(
+                OCPetriNet.Arc(
+                    source=t2,
+                    target=p_output_binding,
+                    object_type=BINDING_OBJECT_TYPE,
+                    is_variable=False,
+                ),
+                arcs,
+            )
         else:
-            # case 4: square marker without duplication
+            # case 6: square marker without duplication/unification
             # places
             places.update([p_input, p_output, p_input_binding, p_output_binding])
             # transitions

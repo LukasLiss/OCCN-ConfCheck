@@ -1328,6 +1328,7 @@ class OCCausalNetTest(unittest.TestCase):
             # _binding places
             ("p_binding#302_1", "_binding"),
             ("p_binding#315_1", "_binding"),
+            ("p_binding#123123", "_binding"), # <-
             ("p_binding#END_order_input", "_binding"),
             ("p_binding#START_order_output", "_binding"),
             ("p_binding#a_input", "_binding"),
@@ -1354,6 +1355,7 @@ class OCCausalNetTest(unittest.TestCase):
             ("_silent#313", None),
             ("_silent#316", None),
             ("_silent#317", None),
+            ("_silent#123123", None), # <-
             ("a", "a"),
             ("b", "b"),
         ]
@@ -1465,7 +1467,33 @@ class OCCausalNetTest(unittest.TestCase):
             is_variable=True,
         )
         connect(
+            transitions["_silent#123123"],
+            places["p_END_order_i_order"],
+            "order",
+            arcs,
+            is_variable=True,
+        )
+        connect(
+            places["p_END_order_i_order"],
             transitions["_silent#317"],
+            "order",
+            arcs,
+            is_variable=True,
+        )
+        connect(
+            transitions["_silent#317"],
+            places["p_binding#123123"],
+            "_binding",
+            arcs,
+        )
+        connect(
+            places["p_binding#123123"],
+            transitions["_silent#123123"],
+            "_binding",
+            arcs,
+        )
+        connect(
+            transitions["_silent#123123"],
             places["p_binding#END_order_input"],
             "_binding",
             arcs,
@@ -1521,6 +1549,13 @@ class OCCausalNetTest(unittest.TestCase):
         connect(
             places["p_arc(a,END_order)_order"],
             transitions["_silent#317"],
+            "order",
+            arcs,
+            is_variable=True,
+        )
+        connect(
+            places["p_arc(a,END_order)_order"],
+            transitions["_silent#123123"],
             "order",
             arcs,
             is_variable=True,
@@ -1685,6 +1720,8 @@ class OCCausalNetTest(unittest.TestCase):
             "p_binding#333",
             "p_binding#342_1",
             "p_binding#342_2",
+            "p_binding#10",
+            "p_binding#20",
             "p_binding#END_order_input",
             "p_binding#START_order_output",
             "p_binding#a_input",
@@ -1724,6 +1761,8 @@ class OCCausalNetTest(unittest.TestCase):
             "343",
             "344",
             "345",
+            "1",
+            "2",
         ]:
             transitions[f"_silent#{code}"] = OCPetriNet.Transition(
                 f"_silent#{code}", None
@@ -1893,6 +1932,7 @@ class OCCausalNetTest(unittest.TestCase):
             is_variable=True,
         )
         connect(transitions["_silent#344"], places["p_binding#342_2"], "_binding", arcs)
+        connect(transitions["_silent#1"], places["p_binding#10"], "_binding", arcs)
 
         connect(
             transitions["_silent#345"],
@@ -1902,7 +1942,20 @@ class OCCausalNetTest(unittest.TestCase):
             is_variable=True,
         )
         connect(
+            transitions["_silent#2"],
+            places["p_END_order_i_order"],
+            "order",
+            arcs,
+            is_variable=True,
+        )
+        connect(
             transitions["_silent#345"],
+            places["p_binding#20"],
+            "_binding",
+            arcs,
+        )
+        connect(
+            transitions["_silent#2"],
             places["p_binding#END_order_input"],
             "_binding",
             arcs,
@@ -1970,6 +2023,27 @@ class OCCausalNetTest(unittest.TestCase):
             arcs,
             is_variable=True,
         )
+        connect(
+            places["p_END_order_i_order"],
+            transitions["_silent#344"],
+            "order",
+            arcs,
+            is_variable=True,
+        )
+        connect(
+            places["p_arc(a,END_order)_order"],
+            transitions["_silent#1"],
+            "order",
+            arcs,
+            is_variable=True,
+        )
+        connect(
+            transitions["_silent#1"],
+            places["p_END_order_i_order"],
+            "order",
+            arcs,
+            is_variable=True,
+        )
         connect(places["p_arc(a,b)_order"], transitions["_silent#337"], "order", arcs)
         connect(
             places["p_arc(a,c)_order"],
@@ -1987,6 +2061,20 @@ class OCCausalNetTest(unittest.TestCase):
         connect(
             places["p_arc(c,END_order)_order"],
             transitions["_silent#345"],
+            "order",
+            arcs,
+            is_variable=True,
+        )
+        connect(
+            places["p_END_order_i_order"],
+            transitions["_silent#345"],
+            "order",
+            arcs,
+            is_variable=True,
+        )
+        connect(
+            places["p_arc(c,END_order)_order"],
+            transitions["_silent#2"],
             "order",
             arcs,
             is_variable=True,
@@ -2012,7 +2100,9 @@ class OCCausalNetTest(unittest.TestCase):
         connect(places["p_binding#331_2"], transitions["_silent#334"], "_binding", arcs)
         connect(places["p_binding#333"], transitions["_silent#333_2"], "_binding", arcs)
         connect(places["p_binding#342_1"], transitions["_silent#344"], "_binding", arcs)
-        connect(places["p_binding#342_2"], transitions["_silent#345"], "_binding", arcs)
+        connect(places["p_binding#10"], transitions["_silent#345"], "_binding", arcs)
+        connect(places["p_binding#20"], transitions["_silent#2"], "_binding", arcs)
+        connect(places["p_binding#342_2"], transitions["_silent#1"], "_binding", arcs)
 
         connect(
             places["p_binding#END_order_input"],
@@ -2148,6 +2238,8 @@ class OCCausalNetTest(unittest.TestCase):
         ]
 
         binding_place_names = [
+            "p_binding#10",
+            "p_binding#20",
             "p_binding#68_1",
             "p_binding#68_2",
             "p_binding#79_1",
@@ -2176,7 +2268,7 @@ class OCCausalNetTest(unittest.TestCase):
             "b": OCPetriNet.Transition("b", "b"),
             "c": OCPetriNet.Transition("c", "c"),
         }
-        for num in [56, 59, 62, 65, 69, 70, 71, 74, 77, 80, 81, 82]:
+        for num in [56, 59, 62, 65, 69, 70, 71, 74, 77, 80, 81, 82, 1, 2]:
             transitions[f"_silent#{num}"] = OCPetriNet.Transition(
                 f"_silent#{num}", None
             )
@@ -2322,6 +2414,15 @@ class OCCausalNetTest(unittest.TestCase):
         connect(transitions["_silent#81"], places["p_binding#79_2"], "_binding", arcs)
 
         connect(
+            transitions["_silent#1"],
+            places["p_END_order_i_order"],
+            "order",
+            arcs,
+            is_variable=True,
+        )
+        connect(transitions["_silent#1"], places["p_binding#10"], "_binding", arcs)
+
+        connect(
             transitions["_silent#82"],
             places["p_END_order_i_order"],
             "order",
@@ -2330,6 +2431,20 @@ class OCCausalNetTest(unittest.TestCase):
         )
         connect(
             transitions["_silent#82"],
+            places["p_binding#20"],
+            "_binding",
+            arcs,
+        )
+
+        connect(
+            transitions["_silent#2"],
+            places["p_END_order_i_order"],
+            "order",
+            arcs,
+            is_variable=True,
+        )
+        connect(
+            transitions["_silent#2"],
             places["p_binding#END_order_input"],
             "_binding",
             arcs,
@@ -2352,6 +2467,20 @@ class OCCausalNetTest(unittest.TestCase):
         connect(
             places["p_END_order_i_order"],
             transitions["END_order"],
+            "order",
+            arcs,
+            is_variable=True,
+        )
+        connect(
+            places["p_END_order_i_order"],
+            transitions["_silent#81"],
+            "order",
+            arcs,
+            is_variable=True,
+        )
+        connect(
+            places["p_END_order_i_order"],
+            transitions["_silent#82"],
             "order",
             arcs,
             is_variable=True,
@@ -2408,6 +2537,13 @@ class OCCausalNetTest(unittest.TestCase):
             is_variable=True,
         )
         connect(
+            places["p_arc(a,END_order)_order"],
+            transitions["_silent#1"],
+            "order",
+            arcs,
+            is_variable=True,
+        )
+        connect(
             places["p_arc(a,b)_order"], transitions["_silent#74"], "order", arcs
         )  # non-variable
         connect(
@@ -2427,16 +2563,25 @@ class OCCausalNetTest(unittest.TestCase):
             arcs,
             is_variable=True,
         )
+        connect(
+            places["p_arc(c,END_order)_order"],
+            transitions["_silent#2"],
+            "order",
+            arcs,
+            is_variable=True,
+        )
 
         connect(places["p_b_i_order"], transitions["b"], "order", arcs)  # non-variable
         connect(
             places["p_b_o_order"], transitions["_silent#77"], "order", arcs
         )  # non-variable
 
+        connect(places["p_binding#10"], transitions["_silent#82"], "_binding", arcs)
+        connect(places["p_binding#20"], transitions["_silent#2"], "_binding", arcs)
         connect(places["p_binding#68_1"], transitions["_silent#70"], "_binding", arcs)
         connect(places["p_binding#68_2"], transitions["_silent#71"], "_binding", arcs)
         connect(places["p_binding#79_1"], transitions["_silent#81"], "_binding", arcs)
-        connect(places["p_binding#79_2"], transitions["_silent#82"], "_binding", arcs)
+        connect(places["p_binding#79_2"], transitions["_silent#1"], "_binding", arcs)
 
         connect(
             places["p_binding#END_order_input"],
@@ -2588,6 +2733,8 @@ class OCCausalNetTest(unittest.TestCase):
             "p_binding#108_2",
             "p_binding#97_1",
             "p_binding#97_2",
+            "p_binding#10",
+            "p_binding#20",
             "p_binding#END_order_input",
             "p_binding#START_order_output",
             "p_binding#a_input",
@@ -2613,7 +2760,7 @@ class OCCausalNetTest(unittest.TestCase):
             "c": OCPetriNet.Transition("c", "c"),
         }
 
-        for num in [85, 88, 91, 94, 98, 99, 100, 103, 106, 109, 110, 111]:
+        for num in [85, 88, 91, 94, 98, 99, 100, 103, 106, 109, 110, 111, 1, 2]:
             transitions[f"_silent#{num}"] = OCPetriNet.Transition(
                 f"_silent#{num}", None
             )
@@ -2682,7 +2829,16 @@ class OCCausalNetTest(unittest.TestCase):
             arcs,
             is_variable=True,
         )
-        connect(transitions["_silent#109"], places["p_binding#108_1"], "_binding", arcs)
+        connect(
+            places["p_END_order_i_order"],
+            transitions["_silent#109"],
+            "order",
+            arcs,
+            is_variable=True,
+        )
+        connect(transitions["_silent#109"], places["p_binding#108_2"], "_binding", arcs)
+        connect(places["p_binding#108_1"], transitions["_silent#109"], "_binding", arcs)
+        connect(places["p_binding#108_2"], transitions["_silent#1"], "_binding", arcs)
 
         connect(
             transitions["_silent#110"],
@@ -2691,14 +2847,34 @@ class OCCausalNetTest(unittest.TestCase):
             arcs,
             is_variable=True,
         )
-        connect(transitions["_silent#110"], places["p_binding#108_2"], "_binding", arcs)
+        connect(transitions["_silent#110"], places["p_binding#20"], "_binding", arcs)
 
         connect(
             transitions["_silent#111"], places["p_END_order_i_order"], "order", arcs
         )
         connect(
-            transitions["_silent#111"],
+            transitions["_silent#2"],
             places["p_binding#END_order_input"],
+            "_binding",
+            arcs,
+        )
+        connect(
+            transitions["_silent#2"],
+            places["p_END_order_i_order"],
+            "order",
+            arcs,
+            is_variable=True
+        )
+        connect(
+            places["p_arc(c,END_order)_order"],
+            transitions["_silent#2"],
+            "order",
+            arcs,
+            is_variable=True
+        )
+        connect(
+            transitions["_silent#111"],
+            places["p_binding#108_1"],
             "_binding",
             arcs,
         )
@@ -2759,6 +2935,26 @@ class OCCausalNetTest(unittest.TestCase):
             "order",
             arcs,
             is_variable=True,
+        )
+        connect(
+            places["p_arc(a,END_order)_order"],
+            transitions["_silent#1"],
+            "order",
+            arcs,
+            is_variable=True,
+        )
+        connect(
+            transitions["_silent#1"],
+            places["p_END_order_i_order"],
+            "order",
+            arcs,
+            is_variable=True,
+        )
+        connect(
+            transitions["_silent#1"],
+            places["p_binding#10"],
+            "_binding",
+            arcs,
         )
         connect(transitions["_silent#98"], places["p_binding#97_1"], "_binding", arcs)
 
@@ -2862,11 +3058,18 @@ class OCCausalNetTest(unittest.TestCase):
             arcs,
             is_variable=True,
         )
+        connect(
+            places["p_END_order_i_order"],
+            transitions["_silent#110"],
+            "order",
+            arcs,
+            is_variable=True,
+        )
 
         connect(places["p_b_i_order"], transitions["b"], "order", arcs)
         connect(places["p_b_o_order"], transitions["_silent#106"], "order", arcs)
 
-        connect(places["p_binding#108_1"], transitions["_silent#110"], "_binding", arcs)
+        connect(places["p_binding#10"], transitions["_silent#110"], "_binding", arcs)
         connect(places["p_binding#108_2"], transitions["_silent#111"], "_binding", arcs)
         connect(places["p_binding#97_1"], transitions["_silent#99"], "_binding", arcs)
         connect(places["p_binding#97_2"], transitions["_silent#100"], "_binding", arcs)
@@ -3021,6 +3224,8 @@ class OCCausalNetTest(unittest.TestCase):
             "p_binding#127_1",
             "p_binding#137_1",
             "p_binding#137_2",
+            "p_binding#10",
+            "p_binding#20",
             "p_binding#END_order_input",
             "p_binding#START_order_output",
             "p_binding#a_input",
@@ -3060,6 +3265,8 @@ class OCCausalNetTest(unittest.TestCase):
             "138",
             "139",
             "140",
+            "1",
+            "2"
         ]:
             name = f"_silent#{code}"
             transitions[name] = OCPetriNet.Transition(name, None)
@@ -3123,6 +3330,13 @@ class OCCausalNetTest(unittest.TestCase):
         connect(
             transitions["_silent#120"],
             places["p_arc(c,END_order)_order"],
+            "order",
+            arcs,
+            is_variable=True,
+        )
+        connect(
+            places["p_arc(c,END_order)_order"],
+            transitions["_silent#2"],
             "order",
             arcs,
             is_variable=True,
@@ -3213,6 +3427,27 @@ class OCCausalNetTest(unittest.TestCase):
             arcs,
             is_variable=True,
         )
+        connect(
+            transitions["_silent#1"],
+            places["p_END_order_i_order"],
+            "order",
+            arcs,
+            is_variable=True,
+        )
+        connect(
+            transitions["_silent#2"],
+            places["p_END_order_i_order"],
+            "order",
+            arcs,
+            is_variable=True,
+        )
+        connect(
+            places["p_END_order_i_order"],
+            transitions["_silent#139"],
+            "order",
+            arcs,
+            is_variable=True,
+        )
         connect(transitions["_silent#139"], places["p_binding#137_2"], "_binding", arcs)
 
         connect(
@@ -3223,7 +3458,26 @@ class OCCausalNetTest(unittest.TestCase):
             is_variable=True,
         )
         connect(
+            places["p_END_order_i_order"],
             transitions["_silent#140"],
+            "order",
+            arcs,
+            is_variable=True,
+        )
+        connect(
+            transitions["_silent#140"],
+            places["p_binding#20"],
+            "_binding",
+            arcs,
+        )
+        connect(
+            places["p_binding#20"],
+            transitions["_silent#2"],
+            "_binding",
+            arcs,
+        )
+        connect(
+            transitions["_silent#2"],
             places["p_binding#END_order_input"],
             "_binding",
             arcs,
@@ -3300,6 +3554,13 @@ class OCCausalNetTest(unittest.TestCase):
             arcs,
             is_variable=True,
         )
+        connect(
+            places["p_arc(a,END_order)_order"],
+            transitions["_silent#1"],
+            "order",
+            arcs,
+            is_variable=True,
+        )
         connect(places["p_arc(a,b)_order"], transitions["_silent#132"], "order", arcs)
         connect(
             places["p_arc(a,c)_order"],
@@ -3328,7 +3589,9 @@ class OCCausalNetTest(unittest.TestCase):
         connect(places["p_binding#125_1"], transitions["_silent#128"], "_binding", arcs)
         connect(places["p_binding#127_1"], transitions["_silent#129"], "_binding", arcs)
         connect(places["p_binding#137_1"], transitions["_silent#139"], "_binding", arcs)
-        connect(places["p_binding#137_2"], transitions["_silent#140"], "_binding", arcs)
+        connect(places["p_binding#137_2"], transitions["_silent#1"], "_binding", arcs)
+        connect(places["p_binding#10"], transitions["_silent#140"], "_binding", arcs)
+        connect(transitions["_silent#1"], places["p_binding#10"], "_binding", arcs)
 
         connect(
             places["p_binding#END_order_input"],
@@ -3488,6 +3751,8 @@ class OCCausalNetTest(unittest.TestCase):
             "p_binding#173_1",
             "p_binding#183_1",
             "p_binding#183_2",
+            "p_binding#10",
+            "p_binding#20",
             "p_binding#END_order_input",
             "p_binding#START_order_output",
             "p_binding#a_input",
@@ -3527,6 +3792,8 @@ class OCCausalNetTest(unittest.TestCase):
             184,
             185,
             186,
+            1,
+            2
         ]:
             t_name = f"_silent#{num}"
             transitions[t_name] = OCPetriNet.Transition(t_name, None)
@@ -3590,6 +3857,20 @@ class OCCausalNetTest(unittest.TestCase):
         connect(
             transitions["_silent#161"],
             places["p_arc(c,END_order)_order"],
+            "order",
+            arcs,
+            is_variable=True,
+        )
+        connect(
+            places["p_arc(c,END_order)_order"],
+            transitions["_silent#2"],
+            "order",
+            arcs,
+            is_variable=True,
+        )
+        connect(
+            transitions["_silent#2"],
+            places["p_END_order_i_order"],
             "order",
             arcs,
             is_variable=True,
@@ -3691,6 +3972,13 @@ class OCCausalNetTest(unittest.TestCase):
             arcs,
             is_variable=True,
         )
+        connect(
+            places["p_END_order_i_order"],
+            transitions["_silent#185"],
+            "order",
+            arcs,
+            is_variable=True,
+        )
         connect(transitions["_silent#185"], places["p_binding#183_2"], "_binding", arcs)
 
         connect(
@@ -3701,8 +3989,27 @@ class OCCausalNetTest(unittest.TestCase):
             is_variable=True,
         )
         connect(
+            places["p_END_order_i_order"],
             transitions["_silent#186"],
+            "order",
+            arcs,
+            is_variable=True,
+        )
+        connect(
+            transitions["_silent#186"],
+            places["p_binding#20"],
+            "_binding",
+            arcs,
+        )
+        connect(
+            transitions["_silent#2"],
             places["p_binding#END_order_input"],
+            "_binding",
+            arcs,
+        )
+        connect(
+            places["p_binding#20"],
+            transitions["_silent#2"],
             "_binding",
             arcs,
         )
@@ -3790,6 +4097,20 @@ class OCCausalNetTest(unittest.TestCase):
             is_variable=True,
         )
         connect(
+            places["p_arc(a,END_order)_order"],
+            transitions["_silent#1"],
+            "order",
+            arcs,
+            is_variable=True,
+        )
+        connect(
+            transitions["_silent#1"],
+            places["p_END_order_i_order"],
+            "order",
+            arcs,
+            is_variable=True,
+        )
+        connect(
             places["p_arc(a,b)_order"], transitions["_silent#178"], "order", arcs
         )  # non-variable
         connect(
@@ -3820,7 +4141,9 @@ class OCCausalNetTest(unittest.TestCase):
         connect(places["p_binding#167_2"], transitions["_silent#170"], "_binding", arcs)
         connect(places["p_binding#173_1"], transitions["_silent#175"], "_binding", arcs)
         connect(places["p_binding#183_1"], transitions["_silent#185"], "_binding", arcs)
-        connect(places["p_binding#183_2"], transitions["_silent#186"], "_binding", arcs)
+        connect(places["p_binding#183_2"], transitions["_silent#1"], "_binding", arcs)
+        connect(transitions["_silent#1"], places["p_binding#10"], "_binding", arcs)
+        connect(places["p_binding#10"], transitions["_silent#186"], "_binding", arcs)
 
         connect(
             places["p_binding#END_order_input"],
@@ -3996,6 +4319,8 @@ class OCCausalNetTest(unittest.TestCase):
             "p_binding#221_1",
             "p_binding#221_2",
             "p_binding#221_3",
+            "p_binding#10",
+            "p_binding#20",
             "p_binding#END_order_input",
             "p_binding#START_order_output",
             "p_binding#a_input",
@@ -4043,6 +4368,9 @@ class OCCausalNetTest(unittest.TestCase):
             "223",
             "224",
             "225",
+            "1",
+            "2",
+            "3",
         ]:
             transitions[f"_silent#{code}"] = OCPetriNet.Transition(
                 f"_silent#{code}", None
@@ -4107,6 +4435,20 @@ class OCCausalNetTest(unittest.TestCase):
         connect(
             transitions["_silent#195"],
             places["p_arc(c,END_order)_order"],
+            "order",
+            arcs,
+            is_variable=True,
+        )
+        connect(
+            places["p_arc(c,END_order)_order"],
+            transitions["_silent#3"],
+            "order",
+            arcs,
+            is_variable=True,
+        )
+        connect(
+            transitions["_silent#3"],
+            places["p_END_order_i_order"],
             "order",
             arcs,
             is_variable=True,
@@ -4242,11 +4584,28 @@ class OCCausalNetTest(unittest.TestCase):
         connect(
             transitions["_silent#223"], places["p_END_order_i_order"], "order", arcs
         )  # non-variable
+        connect(
+            transitions["_silent#1"], places["p_END_order_i_order"], "order", arcs
+        )  # non-variable
+        connect(
+            places["p_END_order_i_order"], 
+            transitions["_silent#1"], 
+            "order", arcs
+        )  # non-variable
+        
         connect(transitions["_silent#223"], places["p_binding#221_2"], "_binding", arcs)
+        connect(transitions["_silent#1"], places["p_binding#221_2"], "_binding", arcs)
 
         connect(
             transitions["_silent#224"],
             places["p_END_order_i_order"],
+            "order",
+            arcs,
+            is_variable=True,
+        )
+        connect(
+            places["p_END_order_i_order"],
+            transitions["_silent#224"],
             "order",
             arcs,
             is_variable=True,
@@ -4261,7 +4620,26 @@ class OCCausalNetTest(unittest.TestCase):
             is_variable=True,
         )
         connect(
+            places["p_END_order_i_order"],
             transitions["_silent#225"],
+            "order",
+            arcs,
+            is_variable=True,
+        )
+        connect(
+            transitions["_silent#225"],
+            places["p_binding#20"],
+            "_binding",
+            arcs,
+        )
+        connect(
+            places["p_binding#20"],
+            transitions["_silent#3"],
+            "_binding",
+            arcs,
+        )
+        connect(
+            transitions["_silent#3"],
             places["p_binding#END_order_input"],
             "_binding",
             arcs,
@@ -4332,6 +4710,20 @@ class OCCausalNetTest(unittest.TestCase):
             arcs,
             is_variable=True,
         )
+        connect(
+            places["p_arc(a,END_order)_order"],
+            transitions["_silent#2"],
+            "order",
+            arcs,
+            is_variable=True,
+        )
+        connect(
+            transitions["_silent#2"],
+            places["p_END_order_i_order"],
+            "order",
+            arcs,
+            is_variable=True,
+        )
         connect(places["p_arc(a,b)_order"], transitions["_silent#216"], "order", arcs)
         connect(
             places["p_arc(a,c)_order"],
@@ -4357,6 +4749,12 @@ class OCCausalNetTest(unittest.TestCase):
         connect(
             places["p_arc(d,END_order)_order"],
             transitions["_silent#223"],
+            "order",
+            arcs,
+        )
+        connect(
+            places["p_arc(d,END_order)_order"],
+            transitions["_silent#1"],
             "order",
             arcs,
         )
@@ -4391,8 +4789,11 @@ class OCCausalNetTest(unittest.TestCase):
         connect(places["p_binding#202_1"], transitions["_silent#204"], "_binding", arcs)
         connect(places["p_binding#205_1"], transitions["_silent#207"], "_binding", arcs)
         connect(places["p_binding#221_1"], transitions["_silent#223"], "_binding", arcs)
+        connect(places["p_binding#221_1"], transitions["_silent#1"], "_binding", arcs)
         connect(places["p_binding#221_2"], transitions["_silent#224"], "_binding", arcs)
-        connect(places["p_binding#221_3"], transitions["_silent#225"], "_binding", arcs)
+        connect(places["p_binding#221_3"], transitions["_silent#2"], "_binding", arcs)
+        connect(transitions["_silent#2"], places["p_binding#10"], "_binding", arcs)
+        connect(places["p_binding#10"], transitions["_silent#225"], "_binding", arcs)
 
         connect(
             places["p_binding#END_order_input"],
