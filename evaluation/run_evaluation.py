@@ -7,7 +7,6 @@ from rich.console import Console
 from rich.live import Live
 
 
-from pm4py.objects.oc_causal_net.creation.factory import create_oc_causal_net
 from pm4py.objects.oc_causal_net.semantics import OCCausalNetSemantics
 from pm4py.objects.ocpn import factory as ocpn_factory
 from pm4py.objects.ocpn import converter as ocpn_converter
@@ -18,7 +17,7 @@ from pm4py.algo.simulation.playout.ocpn.variants.extensive import (
 from pm4py.algo.simulation.playout.oc_causal_net.variants.extensive import (
     apply as playout_occn_extensive,
 )
-from pm4py.objects.ocpn.obj import OCMarking, OCPetriNet
+from pm4py.objects.ocpn.obj import OCMarking
 from pm4py.objects.ocpn.semantics import OCPetriNetSemantics
 
 from converted_occn_semantics import ConvertedOCCausalNetSemantics
@@ -26,82 +25,170 @@ from converted_ocpn_semantics import ConvertedOCPetriNetSemantics
 from replay_statistics import ReplayStatistics, print_footer, print_header
 from playout_parameters import playout_parameters
 from running_ex import occn_running_ex, ocpn_running_ex
+from container_logistics_occn import occn_container_logistics
+from p2p_occn import occn_p2p
+
 
 def evaluation():
-
-    # ocels = ["ContainerLogistics.json"]
-    ocels = ["running_ex_ocpn"]
-    config_id = 0
-    time_budget = 14 * 60 * 60  # seconds
-
-    # Discover OCPN -> convert to OCCN -> play-out and replay for both directions
-    # eval_ocpn(ocels, time_budget)
-
-    # Discover OCCN -> convert to OCPN -> play-out and replay for both directions
-    eval_occn(ocels, time_budget, config_id=config_id)
-
-
-def eval_ocpn(ocels, time_budget):
     """
-    Discover OCPN, convert to OCCN, and perform play-out and replay for both directions.
+    Main function to define and execute the evaluation plan.
+    
+    4 Variants are defined:
+    - Discover OCPN, convert to OCCN, play-out on the original OCPN and replay on the converted OCCN. ("playout_ocpn_replay_on_converted_occn")
+    - Discover OCPN, convert to OCCN, play-out on the converted OCCN and replay on the original OCPN. ("playout_converted_occn_replay_on_ocpn")
+    - Discover OCCN, convert to OCPN, play-out on the original OCCN and replay on the converted OCPN. ("playout_occn_replay_on_converted_ocpn")
+    - Discover OCCN, convert to OCPN, play-out on the converted OCPN and replay on the original OCCN. ("playout_converted_ocpn_replay_on_occn")
+    """
+    # Each dictionary specifies the OCEL and the variants to run with their
+    # respective configurations.
+    evaluation_plan = [
+        {
+            "ocel_name": "ocel2-p2p.json",
+            "variants_to_run": {
+                "playout_ocpn_replay_on_original_occn": {
+                    "config_id": 0,
+                    "time_budget": 14 * 60 * 60,
+                },
+            },
+        },
+    ]
+
+    run_evaluation_plan(evaluation_plan)
+
+
+def run_evaluation_plan(plan):
+    """
+    Parses and executes an evaluation plan.
+
+    For each entry in the plan, this function determines which high-level
+    evaluation function (eval_ocpn or eval_occn) to call based on the
+    specified variants.
 
     Parameters
     ----------
-    ocels : list of str
-        List of OCEL names to evaluate.
-    time_budget : int
-        Time budget for each evaluation in seconds.
+    plan : list of dict
+        A list of configuration dictionaries, where each dictionary defines
+        the work for one OCEL.
     """
-    for ocel_name in ocels:
+    # Define which variants belong to which discovery method
+    ocpn_discovery_variants = {
+        "playout_ocpn_replay_on_converted_occn",
+        "playout_converted_occn_replay_on_ocpn",
+    }
+    occn_discovery_variants = {
+        "playout_occn_replay_on_converted_ocpn",
+        "playout_ocpn_replay_on_original_occn",
+    }
 
-        # Discover OCPN
-        if ocel_name == "running_ex_ocpn":
-            ocpn = ocpn_running_ex()
-        else:
-            ocpn = discover_ocpn(ocel_name)
+    for config in plan:
+        ocel_name = config["ocel_name"]
+        variants_to_run = config["variants_to_run"]
+        
+        # Filter params for the OCPN discovery path
+        params_for_ocpn = {
+            k: v for k, v in variants_to_run.items() if k in ocpn_discovery_variants
+        }
+        if params_for_ocpn:
+            eval_ocpn(ocel_name, params_for_ocpn)
 
-        # Convert to OCCausalNet object
-        occn = ocpn_converter.apply(
-            ocpn, variant=ocpn_converter.Variants.TO_OC_CAUSAL_NET
+        # Filter params for the OCCN discovery path
+        params_for_occn = {
+            k: v for k, v in variants_to_run.items() if k in occn_discovery_variants
+        }
+        if params_for_occn:
+            eval_occn(ocel_name, params_for_occn)
+
+
+def eval_ocpn(ocel_name, variant_params):
+    """
+    Discover an OCPN, convert it to OCCN, and perform play-out/replay.
+
+    This function conditionally executes one or both of its evaluation
+    variants based on the provided parameters.
+
+    Parameters
+    ----------
+    ocel_name : str
+        Name of the OCEL to evaluate.
+    variant_params : dict
+        A dictionary where keys are the names of the variants to run and
+        values are dictionaries containing the 'config_id' and 'time_budget'.
+    """
+    # Discover OCPN
+    if ocel_name == "running_ex":
+        ocpn = ocpn_running_ex()
+    else:
+        ocpn = discover_ocpn(ocel_name)
+
+    # Convert to OCCausalNet object
+    occn = ocpn_converter.apply(ocpn, variant=ocpn_converter.Variants.TO_OC_CAUSAL_NET)
+
+    # Variant 1: Playout OCPN and replay on converted OCCN
+    if "playout_ocpn_replay_on_converted_occn" in variant_params:
+        params = variant_params["playout_ocpn_replay_on_converted_occn"]
+        playout_ocpn_replay_on_converted_occn(
+            ocpn,
+            occn,
+            ocel_name,
+            time_budget=params["time_budget"],
+            config_id=params["config_id"],
         )
 
-        # Playout OCPN and replay on OCCN
-        playout_ocpn_replay_on_converted_occn(ocpn, occn, ocel_name, time_budget)
+    # Variant 2: Playout converted OCCN and replay on original OCPN
+    if "playout_converted_occn_replay_on_ocpn" in variant_params:
+        params = variant_params["playout_converted_occn_replay_on_ocpn"]
+        playout_converted_occn_replay_on_ocpn(
+            ocpn,
+            occn,
+            ocel_name,
+            time_budget=params["time_budget"],
+            config_id=params["config_id"],
+        )
 
-        # Playout OCCN and replay on original OCPN
-        # playout_converted_occn_replay_on_ocpn(ocpn, occn, ocel_name, time_budget)
 
-
-def eval_occn(ocels, time_budget, config_id):
+def eval_occn(ocel_name, variant_params):
     """
-    Discover OCCN, convert to OCPN, and perform play-out and replay for both directions.
+    Discover an OCCN, convert it to OCPN, and perform play-out/replay.
+
+    This function conditionally executes one or both of its evaluation
+    variants based on the provided parameters.
 
     Parameters
     ----------
-    ocels : list of str
-        List of OCEL names to evaluate.
-    time_budget : int
-        Time budget for each evaluation in seconds.
-    config_id : int
-        Configuration ID to use for the play-out parameters.
+    ocel_name : str
+        Name of the OCEL to evaluate.
+    variant_params : dict
+        A dictionary where keys are the names of the variants to run and
+        values are dictionaries containing the 'config_id' and 'time_budget'.
     """
-    for ocel_name in ocels:
+    # Discover OCCN
+    occn = discover_occn(ocel_name)
 
-        if ocel_name == "running_ex_ocpn":
-            occn = occn_running_ex()
-        else:
-            occn = discover_occn(ocel_name)
+    # Convert to OCPetriNet object
+    ocpn = occn_converter.apply(occn, variant=occn_converter.Variants.TO_OCPN)
+    _save_viz_ocpn_converted(ocpn, ocel_name)
 
-        # Convert to OCPetriNet object
-        ocpn = occn_converter.apply(occn, variant=occn_converter.Variants.TO_OCPN)
-
-        # Playout OCCN and replay on OCPN
+    # Variant 1: Playout OCCN and replay on converted OCPN
+    if "playout_occn_replay_on_converted_ocpn" in variant_params:
+        params = variant_params["playout_occn_replay_on_converted_ocpn"]
         playout_occn_replay_on_converted_ocpn(
-            occn, ocpn, ocel_name, time_budget, config_id=config_id
+            occn,
+            ocpn,
+            ocel_name,
+            time_budget=params["time_budget"],
+            config_id=params["config_id"],
         )
 
-        # Playout OCPN and replay on original OCCN
-        # playout_ocpn_replay_on_original_occn(ocpn, occn, ocel_name, time_budget)
+    # Variant 2: Playout converted OCPN and replay on original OCCN
+    if "playout_ocpn_replay_on_original_occn" in variant_params:
+        params = variant_params["playout_ocpn_replay_on_original_occn"]
+        playout_ocpn_replay_on_original_occn(
+            ocpn,
+            occn,
+            ocel_name,
+            time_budget=params["time_budget"],
+            config_id=params["config_id"],
+        )
 
 
 def discover_ocpn(ocel_name):
@@ -140,21 +227,28 @@ def discover_ocpn(ocel_name):
 
 def discover_occn(ocel_name):
     """
-    This function reads the OCEL, discovers the OCCausalNet, and saves a visualization.
+    This function reads the OCEL and discovers the OCCausalNet.
 
     Parameters
     ----------
     ocel_name : str
         The name of the OCEL file (e.g., "ContainerLogistics.json").
-        The OCEL file should be located in the "evaluation/event_logs" directory.
-        The visualization will be saved in the "evaluation/discovered_occn" directory.
 
     Returns
     -------
     OCCausalNet
         The discovered OCCausalNet object.
     """
-    raise NotImplementedError()
+    if ocel_name == "running_ex":
+        occn = occn_running_ex()
+    elif ocel_name == "ContainerLogistics.json":
+        occn = occn_container_logistics()
+    elif ocel_name == "ocel2-p2p.json":
+        occn = occn_p2p()
+    else:
+        raise ValueError(f"Unknown OCCN for OCEL name: {ocel_name}")
+    
+    return occn
 
 
 def playout_config(ocel_name, ocpn, playout_mode, config_id=0):
@@ -839,6 +933,30 @@ def replay_on_converted_ocpn(
             failed_replays += 1
 
     return failed_replays, successful_replays
+
+
+def _save_viz_ocpn_converted(ocpn, ocel_name):
+    """
+    Transforms the OCPetriNet to the alternate format and saves a visualization.
+
+    Parameters
+    ----------
+    ocpn : OCPetriNet
+        The OCPetriNet object to visualize.
+    ocel_name : str
+        The name of the OCEL file, used for naming the visualization file.
+    """
+    # convert to alternate format
+    alternate_ocpn = ocpn_converter.apply(
+        ocpn, variant=ocpn_converter.Variants.TO_ALTERNATIVE_FORMAT
+    )
+
+    # create converted_ocpns directory if it doesn't exist
+    if not os.path.exists("evaluation/converted_ocpns"):
+        os.makedirs("evaluation/converted_ocpns")
+    # Save visualization
+    path_png = os.path.join("evaluation", "converted_ocpns", f"{ocel_name}.png")
+    pm4py.save_vis_ocpn(alternate_ocpn, path_png)
 
 
 if __name__ == "__main__":

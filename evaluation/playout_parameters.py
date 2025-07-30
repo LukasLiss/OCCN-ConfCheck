@@ -32,6 +32,8 @@ def playout_parameters(ocel_name, config_id, playout_mode):
         if config_id == 0:  # smallest example
             original_ocpn_branching_factor = 1.4
             converted_occn_branching_factor = 1.2
+            original_occn_branching_factor = 1.1
+            converted_ocpn_branching_factor = 1.2
             max_bindings_per_activity = 4
             object_numbers = {
                 "Customer Order": 1,
@@ -55,7 +57,50 @@ def playout_parameters(ocel_name, config_id, playout_mode):
                 "Handling Unit": 4,
                 "Forklift": 1,
             }
-    elif ocel_name == "running_ex_ocpn":
+        elif config_id == 2:  # subset of ots (for occn)
+            original_ocpn_branching_factor = 1.4
+            converted_occn_branching_factor = 1.2
+            original_occn_branching_factor = 1.2
+            converted_ocpn_branching_factor = 1.3
+            max_bindings_per_activity = 5
+            object_numbers = {
+                "Customer Order": 2,
+                "Transport Document": 2,
+                "Container": 2,
+                "Handling Unit": 2,
+            }
+    elif ocel_name == "ocel2-p2p.json":
+        if config_id == 0:
+            original_ocpn_branching_factor = 1.6
+            converted_occn_branching_factor = 1.25
+            original_occn_branching_factor = 1.5
+            converted_ocpn_branching_factor = 1.5
+            max_bindings_per_activity = 5
+            object_numbers = {
+                "goods receipt": 1,
+                "invoice receipt": 1,
+                "material": 1,
+                "purchase_order": 1,
+                "purchase_requisition": 1,
+                "quotation": 1,
+                "payment": 1,
+            }
+        if config_id == 1:
+            original_ocpn_branching_factor = 1.6
+            converted_occn_branching_factor = 1.25
+            original_occn_branching_factor = 1.4
+            converted_ocpn_branching_factor = 1.2
+            max_bindings_per_activity = 5
+            object_numbers = {
+                "goods receipt": 2,
+                "invoice receipt": 2,
+                "material": 2,
+                "purchase_order": 1,
+                "purchase_requisition": 1,
+                "quotation": 1,
+                "payment": 1,
+            }
+    elif ocel_name == "running_ex":
         if config_id == 0:
             original_ocpn_branching_factor = 1.2
             converted_occn_branching_factor = 1.1
@@ -63,9 +108,9 @@ def playout_parameters(ocel_name, config_id, playout_mode):
             converted_ocpn_branching_factor = 1.5
             max_bindings_per_activity = 10
             object_numbers = {
-                "Container": 2,
-                "Order": 3,
-                "Box": 0,
+                "Container": 1,
+                "Order": 4,
+                "Box": 1,
             }
 
         elif config_id == 1:  # smallest example
@@ -73,10 +118,34 @@ def playout_parameters(ocel_name, config_id, playout_mode):
             converted_occn_branching_factor = 1.1
             original_occn_branching_factor = 100
             converted_ocpn_branching_factor = 1.1
-            max_bindings_per_activity = 100
+            max_bindings_per_activity = 10
             object_numbers = {
                 "Container": 0,
                 "Order": 1,
+                "Box": 1,
+            }
+        
+        elif config_id == 2:  # no boxes, 2 containers
+            original_ocpn_branching_factor = 1.2
+            converted_occn_branching_factor = 1.1
+            original_occn_branching_factor = 1.2
+            converted_ocpn_branching_factor = 1.1
+            max_bindings_per_activity = 10
+            object_numbers = {
+                "Container": 2,
+                "Order": 3,
+                "Box": 0,
+            }
+        
+        elif config_id == 3: 
+            original_ocpn_branching_factor = 1.2
+            converted_occn_branching_factor = 1.1
+            original_occn_branching_factor = 1.25
+            converted_ocpn_branching_factor = 1.4
+            max_bindings_per_activity = 10
+            object_numbers = {
+                "Container": 2,
+                "Order": 3,
                 "Box": 1,
             }
 

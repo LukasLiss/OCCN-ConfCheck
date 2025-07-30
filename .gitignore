@@ -139,5 +139,7 @@ dmypy.json
 renovate.json5
 
 
-evaluation/event_logs
 evaluation/discovered_ocpns
+evaluation/converted_ocpns
+evaluation/discovered_occns
+evaluation/occn_visualization
