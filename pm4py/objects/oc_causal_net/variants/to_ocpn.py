@@ -219,7 +219,11 @@ def transform_activity(
         The input binding place for the activity construct.
     """
     is_start = activity.startswith("START_")
+    if is_start:
+        assert not input_marker_groups, f"Start activity {activity} is a START activity and must not have input marker groups."
     is_end = activity.startswith("END_")
+    if is_end:
+        assert not output_marker_groups, f"End activity {activity} is an END activity and must not have output marker groups."
 
     # transition
     t = OCPetriNet.Transition(name=activity, label=activity)
