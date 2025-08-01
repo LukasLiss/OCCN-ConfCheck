@@ -22,11 +22,13 @@ from pm4py.objects.ocpn.semantics import OCPetriNetSemantics
 
 from converted_occn_semantics import ConvertedOCCausalNetSemantics
 from converted_ocpn_semantics import ConvertedOCPetriNetSemantics
-from replay_statistics import ReplayStatistics, print_footer, print_header
+from replay_statistics import ReplayStatistics
 from playout_parameters import playout_parameters
 from running_ex import occn_running_ex, ocpn_running_ex
 from container_logistics_occn import occn_container_logistics
 from p2p_occn import occn_p2p
+
+LOG_DIR = "evaluation/logs"
 
 
 def evaluation():
@@ -43,11 +45,11 @@ def evaluation():
     # respective configurations.
     evaluation_plan = [
         {
-            "ocel_name": "ocel2-p2p.json",
+            "ocel_name": "running_ex",
             "variants_to_run": {
-                "playout_ocpn_replay_on_original_occn": {
+                "playout_ocpn_replay_on_converted_occn": {
                     "config_id": 0,
-                    "time_budget": 14 * 60 * 60,
+                    "time_budget": 20,
                 },
             },
         },
@@ -441,12 +443,11 @@ def _execute_ocpn_playout_and_replay_on_occn(
 
     # --- UI and Statistics Initialization ---
     console = Console()
-    stats = ReplayStatistics(time_budget)
-    print_header(
+    stats = ReplayStatistics(time_budget, log_dir=LOG_DIR)
+    stats.print_header(
         console,
         header_title,
         ocel_name,
-        time_budget,
         config,
     )
 
@@ -482,7 +483,7 @@ def _execute_ocpn_playout_and_replay_on_occn(
             live.update(stats.get_live_layout())
 
     # --- Footer ---
-    print_footer(console)
+    stats.print_footer(console)
 
 
 def _perform_replay_on_occn(
@@ -637,8 +638,8 @@ def _execute_occn_playout_and_replay_on_ocpn(
 
     # --- UI and Statistics Initialization ---
     console = Console()
-    stats = ReplayStatistics(time_budget)
-    print_header(console, header_title, ocel_name, time_budget, config)
+    stats = ReplayStatistics(time_budget, log_dir=LOG_DIR)
+    stats.print_header(console, header_title, ocel_name, config)
 
     # --- Main Loop with Live Display ---
     with Live(
@@ -677,7 +678,7 @@ def _execute_occn_playout_and_replay_on_ocpn(
             live.update(stats.get_live_layout())
 
     # --- Footer ---
-    print_footer(console)
+    stats.print_footer(console)
 
 
 def _perform_replay_on_ocpn(
