@@ -431,10 +431,10 @@ class ConvertedOCPetriNetSemantics(OCPetriNetSemantics[N]):
             Mapping from object IDs to object types
         precomputed: dict
             Precomputed parameters for the replay obtained from `precompute_ocpn_replay_params`
-        memo_reachable: set
-            A set to memoize bindings that could be simulated successfully.
-        memo_unreachable: set
-            A set to memoize bindings that could not be simulated successfully.
+        memo_reachable: dict
+            A dict to memoize bindings that could be simulated successfully.
+        memo_unreachable: dict
+            A dict to memoize bindings that could not be simulated successfully.
 
         Returns
         -------
@@ -575,10 +575,10 @@ class ConvertedOCPetriNetSemantics(OCPetriNetSemantics[N]):
             Mapping from activity names to their respective subnets in the OCPN
         global_binding_place: OCPetriNet.Place
             The global binding place in the OCPN.
-        memo_reachable: set
-            A set to memoize bindings that could be simulated successfully.
-        memo_unreachable: set
-            A set to memoize bindings that could not be simulated successfully.
+        memo_reachable: dict
+            A dict to memoize bindings that could be simulated successfully.
+        memo_unreachable: dict
+            A dict to memoize bindings that could not be simulated successfully.
 
         Returns
         -------
@@ -759,10 +759,10 @@ class ConvertedOCPetriNetSemantics(OCPetriNetSemantics[N]):
             Mapping from activity names to their respective subnets in the OCPN.
         global_binding_place: OCPetriNet.Place
             The global binding place in the OCPN, where the _binding token is added.
-        memo_reachable: set
-            A set to memoize bindings that could be simulated successfully.
-        memo_unreachable: set
-            A set to memoize bindings that could not be simulated successfully.
+        memo_reachable: dict
+            A dict to memoize bindings that could be simulated successfully.
+        memo_unreachable: dict
+            A dict to memoize bindings that could not be simulated successfully.
 
         Returns
         -------
@@ -802,14 +802,10 @@ class ConvertedOCPetriNetSemantics(OCPetriNetSemantics[N]):
             )
 
             if success:
-                memo_reachable.add(
-                    (act, expected_tokens_w_binding, target_tokens_w_binding)
-                )
+                memo_reachable[(act, expected_tokens_w_binding, target_tokens_w_binding)] = True
             else:
                 # We cannot reach target_tokens from expected_tokens
-                memo_unreachable.add(
-                    (act, expected_tokens_w_binding, target_tokens_w_binding)
-                )
+                memo_unreachable[(act, expected_tokens_w_binding, target_tokens_w_binding)] = True
                 return None
 
         # We can reach target_tokens from expected_tokens, so we can create the correct marking

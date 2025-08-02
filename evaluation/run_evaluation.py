@@ -5,6 +5,7 @@ import os
 from rich.console import Console
 from rich.live import Live
 from collections import Counter, defaultdict
+from multiprocessing import Manager
 from concurrent.futures import ProcessPoolExecutor, wait, FIRST_COMPLETED
 
 
@@ -51,7 +52,7 @@ def evaluation():
         {
             "ocel_name": "running_ex",
             "variants_to_run": {
-                "playout_ocpn_replay_on_converted_occn": {
+                "playout_converted_occn_replay_on_ocpn": {
                     "config_id": 0,
                     "time_budget": 30,
                 },
@@ -521,7 +522,7 @@ def _run_single_ocpn_playout_and_replay_on_occn_iteration(
     ocpn, initial_marking, final_marking, parameters, playout_mode, occn, precomputed
 ):
     """
-    Executes one iteration of play-out and replay. This function is run by each thread.
+    Executes one iteration of play-out and replay. This function is run by each process.
     """
     iter_start_time = time.time()
 
@@ -692,10 +693,6 @@ def _execute_occn_playout_and_replay_on_ocpn(
     ocpn_initial_marking = config["initial_marking"]
     ocpn_final_marking = config["final_marking"]
 
-    # Memo sets used for playout mode "occn_replay_on_converted_ocpn"
-    memo_reachable = set()
-    memo_unreachable = set()
-
     # --- UI and Statistics Initialization ---
     console = Console()
     stats = ReplayStatistics(time_budget, log_dir=LOG_DIR)
@@ -709,36 +706,111 @@ def _execute_occn_playout_and_replay_on_ocpn(
         refresh_per_second=4,
         vertical_overflow="visible",
     ) as live:
-        while stats.passed_time < time_budget:
-            iter_start_time = time.time()
+        
+        with Manager() as manager:
+            # use manager to create shared memoization dictionaries
+            # (only used for playout mode "occn_replay_on_converted_ocpn")
+            memo_reachable = manager.dict()
+            memo_unreachable = manager.dict()
+            
+            # Fill worker pool with initial tasks
+            executor = ProcessPoolExecutor(max_workers=NUM_PROCESSES)
+            active_futures = set()
+            
+            for _ in range(NUM_PROCESSES):
+                future = executor.submit(
+                    _run_single_occn_playout_and_replay_on_ocpn_iteration,
+                    occn,
+                    objects,
+                    parameters,
+                    playout_mode,
+                    ocpn,
+                    ocpn_initial_marking,
+                    ocpn_final_marking,
+                    memo_reachable,  
+                    memo_unreachable,
+                    precomputed,
+                )
+                active_futures.add(future)
+                
+            # As long as there is time left, restart any completed task
+            while active_futures and stats.passed_time < time_budget:
+                # Wait for the first process to finish its task
+                done_futures, _ = wait(active_futures, return_when=FIRST_COMPLETED)
+                
+                for future in done_futures:
+                    # Collect results and update statistics
+                    num_sequences, failed_replays, iter_time = future.result()
+                    stats.update(num_sequences, failed_replays, iter_time)
+                    live.update(stats.get_live_layout())
 
-            # Perform play-out
-            (valid_sequences_iter, id_to_activity, id_to_object_type) = (
-                playout_occn_extensive(occn, objects, parameters=parameters)
-            )
+                    active_futures.remove(future)
 
-            # Perform replay
-            failed_replays, successful_replays = _perform_replay_on_ocpn(
-                playout_mode,
-                ocpn,
-                ocpn_initial_marking,
-                ocpn_final_marking,
-                valid_sequences_iter,
-                id_to_activity,
-                id_to_object_type,
-                memo_reachable=memo_reachable,
-                memo_unreachable=memo_unreachable,
-                precomputed=precomputed,
-            )
-            no_sequences = failed_replays + successful_replays
-
-            # Update statistics and refresh the live display
-            iter_time = time.time() - iter_start_time
-            stats.update(no_sequences, failed_replays, iter_time)
-            live.update(stats.get_live_layout())
+                    # If the time budget allows, submit a new task to replace the one that just finished
+                    if stats.passed_time < time_budget:
+                        new_future = executor.submit(
+                            _run_single_occn_playout_and_replay_on_ocpn_iteration,
+                            occn,
+                            objects,
+                            parameters,
+                            playout_mode,
+                            ocpn,
+                            ocpn_initial_marking,
+                            ocpn_final_marking,
+                            memo_reachable,
+                            memo_unreachable,
+                            precomputed,
+                        )
+                        active_futures.add(new_future)
+            
+            # Time budget is exceeded, cancel all remaining tasks
+            executor.shutdown(wait=False, cancel_futures=True)
 
     # --- Footer ---
     stats.print_footer(console)
+    
+def _run_single_occn_playout_and_replay_on_ocpn_iteration(
+    occn,
+    objects,
+    parameters,
+    playout_mode,
+    ocpn,
+    ocpn_initial_marking,
+    ocpn_final_marking,
+    memo_reachable,
+    memo_unreachable,
+    precomputed,
+):
+    """
+    Executes one iteration of OCCN play-out and OCPN replay.
+    This function is run by each independent process and communicates with the
+    central Manager to read from and write to the shared memoization sets.
+    """
+    iter_start_time = time.time()
+
+    # Perform play-out
+    (valid_sequences_iter, id_to_activity, id_to_object_type) = playout_occn_extensive(
+        occn, objects, parameters=parameters
+    )
+
+    # Perform replay
+    # The replay function uses the shared memoization dictionaries (proxies) for its checks.
+    failed_replays, successful_replays = _perform_replay_on_ocpn(
+        playout_mode,
+        ocpn,
+        ocpn_initial_marking,
+        ocpn_final_marking,
+        valid_sequences_iter,
+        id_to_activity,
+        id_to_object_type,
+        memo_reachable=memo_reachable,
+        memo_unreachable=memo_unreachable,
+        precomputed=precomputed,
+    )
+    no_sequences = failed_replays + successful_replays
+
+    iter_time = time.time() - iter_start_time
+    return (no_sequences, failed_replays, iter_time)
 
 
 def _perform_replay_on_ocpn(
@@ -960,10 +1032,10 @@ def replay_on_converted_ocpn(
         A mapping from activity IDs to their respective activity labels.
     id_to_object_type : dict
         A mapping from object IDs to their respective object types.
-    memo_reachable: set
-        A set to memoize bindings that could be simulated successfully.
-    memo_unreachable: set
-        A set to memoize bindings that could not be simulated successfully.
+    memo_reachable: dict
+        A dict to memoize bindings that could be simulated successfully.
+    memo_unreachable: dict
+        A dict to memoize bindings that could not be simulated successfully.
     precomputed : dict
         Precomputed parameters for the replay.
 
