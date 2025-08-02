@@ -1,10 +1,11 @@
-from collections import Counter, defaultdict
 import re
 import time
 import pm4py
 import os
 from rich.console import Console
 from rich.live import Live
+from collections import Counter, defaultdict
+from concurrent.futures import ThreadPoolExecutor, wait, FIRST_COMPLETED
 
 
 from pm4py.objects.oc_causal_net.semantics import OCCausalNetSemantics
@@ -30,6 +31,8 @@ from p2p_occn import occn_p2p
 
 LOG_DIR = "evaluation/logs"
 
+# Number of threads to use for the evaluation
+NUM_THREADS = 2
 
 def evaluation():
     """
@@ -49,7 +52,7 @@ def evaluation():
             "variants_to_run": {
                 "playout_ocpn_replay_on_converted_occn": {
                     "config_id": 0,
-                    "time_budget": 20,
+                    "time_budget": 30,
                 },
             },
         },
@@ -418,6 +421,33 @@ def _execute_ocpn_playout_and_replay_on_occn(
         Additional precomputed parameters for the play-out algorithm, by default None.
         Required for "ocpn_replay_on_original_occn".
     """
+    def run_single_iteration(ocpn, initial_marking, final_marking, parameters, playout_mode, occn, precomputed):
+        """
+        Executes one iteration of play-out and replay. This function is run by each thread.
+        """
+        iter_start_time = time.time()
+
+        # Perform play-out
+        (traces, idx_to_transition, id_to_obj_type) = playout_ocpn_extensive(
+            ocpn, initial_marking, final_marking, parameters=parameters
+        )
+
+        # Perform replay
+        failed_replays = _perform_replay_on_occn(
+            playout_mode,
+            occn,
+            traces,
+            idx_to_transition,
+            id_to_obj_type,
+            precomputed=precomputed,
+        )
+
+        iter_time = time.time() - iter_start_time
+        
+        # Return results needed for stats.update()
+        return (len(traces), failed_replays, iter_time)
+    
+    
     # --- Configuration Setup ---
     config = playout_config(
         ocel_name, ocpn, playout_mode=playout_mode, config_id=config_id
@@ -459,28 +489,45 @@ def _execute_ocpn_playout_and_replay_on_occn(
         refresh_per_second=4,
         vertical_overflow="visible",
     ) as live:
-        while stats.passed_time < time_budget:
-            iter_start_time = time.time()
-
-            # Perform play-out
-            (traces, idx_to_transition, id_to_obj_type) = playout_ocpn_extensive(
-                ocpn, initial_marking, final_marking, parameters=parameters
+        
+        # Manage worker threads
+        executor = ThreadPoolExecutor(max_workers=NUM_THREADS)
+        active_futures = set()
+        
+        # Fill worker pool with initial tasks
+        for _ in range(NUM_THREADS):
+            future = executor.submit(
+                run_single_iteration,
+                ocpn, initial_marking, final_marking, parameters,
+                playout_mode, occn, precomputed
             )
-
-            # Perform replay
-            failed_replays = _perform_replay_on_occn(
-                playout_mode,
-                occn,
-                traces,
-                idx_to_transition,
-                id_to_obj_type,
-                precomputed=precomputed,
-            )
-
-            # Update statistics and refresh the live display
-            iter_time = time.time() - iter_start_time
-            stats.update(len(traces), failed_replays, iter_time)
-            live.update(stats.get_live_layout())
+            active_futures.add(future)
+        
+        # As long as there is time left, restart any completed task
+        while active_futures and stats.passed_time < time_budget:
+            # Wait for any task to complete
+            done_futures, _ = wait(active_futures, return_when=FIRST_COMPLETED)
+            
+            for future in done_futures:
+                # Process result: update stats
+                num_traces, failed_replays, iter_time = future.result()
+                stats.update(num_traces, failed_replays, iter_time)
+                live.update(stats.get_live_layout())
+                
+                # Remove completed future from the set
+                active_futures.remove(future)
+                
+                # Restart task if time budget allows
+                if stats.passed_time < time_budget:
+                    new_future = executor.submit(
+                        run_single_iteration,
+                        ocpn, initial_marking, final_marking, parameters,
+                        playout_mode, occn, precomputed
+                    )
+                    active_futures.add(new_future)
+        
+        # Time budget is exceeded, cancel all remaining tasks
+        executor.shutdown(wait=False, cancel_futures=True)
 
     # --- Footer ---
     stats.print_footer(console)

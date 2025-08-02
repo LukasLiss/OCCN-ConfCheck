@@ -1,6 +1,7 @@
 import statistics
 import time
 import os
+import threading
 from datetime import datetime
 from rich.table import Table
 from rich.panel import Panel
@@ -21,6 +22,8 @@ class ReplayStatistics:
         self.total_failed_replays = 0
         self.iteration_times = []
         self.traces_per_iteration = []
+        # lock to ensure thread-safe updates
+        self._lock = threading.Lock()
 
         # --- Logging Setup ---
         self.log_dir = log_dir
@@ -64,32 +67,33 @@ class ReplayStatistics:
 
     def update(self, num_traces_in_iter, failed_replays, iter_time):
         """Update statistics after an iteration."""
-        self.i += 1
-        self.iteration_times.append(iter_time)
-        self.traces_per_iteration.append(num_traces_in_iter)
-        self.total_traces_generated += num_traces_in_iter
-        self.total_failed_replays += failed_replays
-        self.passed_time = time.time() - self.start_time
+        with self._lock:
+            self.i += 1
+            self.iteration_times.append(iter_time)
+            self.traces_per_iteration.append(num_traces_in_iter)
+            self.total_traces_generated += num_traces_in_iter
+            self.total_failed_replays += failed_replays
+            self.passed_time = time.time() - self.start_time
 
-        # --- Log update to file ---
-        if self.log_file:
-            failure_rate = (
-                (self.total_failed_replays / self.total_traces_generated)
-                if self.total_traces_generated > 0
-                else 0
-            )
-            success_rate = (1 - failure_rate) * 100
-            log_line = (
-                f"Iteration {self.i}: "
-                f"Successful Replays={self.total_traces_generated - self.total_failed_replays}/{self.total_traces_generated}, "
-                f"Success Rate={success_rate:.2f}%, "
-                f"Passed Time={self.passed_time:.2f}s, "
-                f"Total Traces={self.total_traces_generated}, "
-                f"Iter Time={iter_time:.2f}s, "
-                f"Traces in Iter={num_traces_in_iter}\n"
-            )
-            with open(self.log_file, "a") as f:
-                f.write(log_line)
+            # --- Log update to file ---
+            if self.log_file:
+                failure_rate = (
+                    (self.total_failed_replays / self.total_traces_generated)
+                    if self.total_traces_generated > 0
+                    else 0
+                )
+                success_rate = (1 - failure_rate) * 100
+                log_line = (
+                    f"Iteration {self.i}: "
+                    f"Successful Replays={self.total_traces_generated - self.total_failed_replays}/{self.total_traces_generated}, "
+                    f"Success Rate={success_rate:.2f}%, "
+                    f"Passed Time={self.passed_time:.2f}s, "
+                    f"Total Traces={self.total_traces_generated}, "
+                    f"Iter Time={iter_time:.2f}s, "
+                    f"Traces in Iter={num_traces_in_iter}\n"
+                )
+                with open(self.log_file, "a") as f:
+                    f.write(log_line)
 
     def print_footer(self, console):
         """
