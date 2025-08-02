@@ -5,7 +5,7 @@ import os
 from rich.console import Console
 from rich.live import Live
 from collections import Counter, defaultdict
-from concurrent.futures import ThreadPoolExecutor, wait, FIRST_COMPLETED
+from concurrent.futures import ProcessPoolExecutor, wait, FIRST_COMPLETED
 
 
 from pm4py.objects.oc_causal_net.semantics import OCCausalNetSemantics
@@ -31,13 +31,14 @@ from p2p_occn import occn_p2p
 
 LOG_DIR = "evaluation/logs"
 
-# Number of threads to use for the evaluation
-NUM_THREADS = 2
+# Number of concurrent processes to use for the evaluation
+NUM_PROCESSES = 2
+
 
 def evaluation():
     """
     Main function to define and execute the evaluation plan.
-    
+
     4 Variants are defined:
     - Discover OCPN, convert to OCCN, play-out on the original OCPN and replay on the converted OCCN. ("playout_ocpn_replay_on_converted_occn")
     - Discover OCPN, convert to OCCN, play-out on the converted OCCN and replay on the original OCPN. ("playout_converted_occn_replay_on_ocpn")
@@ -88,7 +89,7 @@ def run_evaluation_plan(plan):
     for config in plan:
         ocel_name = config["ocel_name"]
         variants_to_run = config["variants_to_run"]
-        
+
         # Filter params for the OCPN discovery path
         params_for_ocpn = {
             k: v for k, v in variants_to_run.items() if k in ocpn_discovery_variants
@@ -252,7 +253,7 @@ def discover_occn(ocel_name):
         occn = occn_p2p()
     else:
         raise ValueError(f"Unknown OCCN for OCEL name: {ocel_name}")
-    
+
     return occn
 
 
@@ -421,33 +422,6 @@ def _execute_ocpn_playout_and_replay_on_occn(
         Additional precomputed parameters for the play-out algorithm, by default None.
         Required for "ocpn_replay_on_original_occn".
     """
-    def run_single_iteration(ocpn, initial_marking, final_marking, parameters, playout_mode, occn, precomputed):
-        """
-        Executes one iteration of play-out and replay. This function is run by each thread.
-        """
-        iter_start_time = time.time()
-
-        # Perform play-out
-        (traces, idx_to_transition, id_to_obj_type) = playout_ocpn_extensive(
-            ocpn, initial_marking, final_marking, parameters=parameters
-        )
-
-        # Perform replay
-        failed_replays = _perform_replay_on_occn(
-            playout_mode,
-            occn,
-            traces,
-            idx_to_transition,
-            id_to_obj_type,
-            precomputed=precomputed,
-        )
-
-        iter_time = time.time() - iter_start_time
-        
-        # Return results needed for stats.update()
-        return (len(traces), failed_replays, iter_time)
-    
-    
     # --- Configuration Setup ---
     config = playout_config(
         ocel_name, ocpn, playout_mode=playout_mode, config_id=config_id
@@ -489,48 +463,87 @@ def _execute_ocpn_playout_and_replay_on_occn(
         refresh_per_second=4,
         vertical_overflow="visible",
     ) as live:
-        
-        # Manage worker threads
-        executor = ThreadPoolExecutor(max_workers=NUM_THREADS)
+
+        # Manage processes
+        executor = ProcessPoolExecutor(max_workers=NUM_PROCESSES)
         active_futures = set()
-        
+
         # Fill worker pool with initial tasks
-        for _ in range(NUM_THREADS):
+        for _ in range(NUM_PROCESSES):
             future = executor.submit(
-                run_single_iteration,
-                ocpn, initial_marking, final_marking, parameters,
-                playout_mode, occn, precomputed
+                _run_single_ocpn_playout_and_replay_on_occn_iteration,
+                ocpn,
+                initial_marking,
+                final_marking,
+                parameters,
+                playout_mode,
+                occn,
+                precomputed,
             )
             active_futures.add(future)
-        
+
         # As long as there is time left, restart any completed task
         while active_futures and stats.passed_time < time_budget:
             # Wait for any task to complete
             done_futures, _ = wait(active_futures, return_when=FIRST_COMPLETED)
-            
+
             for future in done_futures:
                 # Process result: update stats
                 num_traces, failed_replays, iter_time = future.result()
                 stats.update(num_traces, failed_replays, iter_time)
                 live.update(stats.get_live_layout())
-                
+
                 # Remove completed future from the set
                 active_futures.remove(future)
-                
+
                 # Restart task if time budget allows
                 if stats.passed_time < time_budget:
                     new_future = executor.submit(
-                        run_single_iteration,
-                        ocpn, initial_marking, final_marking, parameters,
-                        playout_mode, occn, precomputed
+                        _run_single_ocpn_playout_and_replay_on_occn_iteration,
+                        ocpn,
+                        initial_marking,
+                        final_marking,
+                        parameters,
+                        playout_mode,
+                        occn,
+                        precomputed,
                     )
                     active_futures.add(new_future)
-        
+
         # Time budget is exceeded, cancel all remaining tasks
         executor.shutdown(wait=False, cancel_futures=True)
 
     # --- Footer ---
     stats.print_footer(console)
+
+
+def _run_single_ocpn_playout_and_replay_on_occn_iteration(
+    ocpn, initial_marking, final_marking, parameters, playout_mode, occn, precomputed
+):
+    """
+    Executes one iteration of play-out and replay. This function is run by each thread.
+    """
+    iter_start_time = time.time()
+
+    # Perform play-out
+    (traces, idx_to_transition, id_to_obj_type) = playout_ocpn_extensive(
+        ocpn, initial_marking, final_marking, parameters=parameters
+    )
+
+    # Perform replay
+    failed_replays = _perform_replay_on_occn(
+        playout_mode,
+        occn,
+        traces,
+        idx_to_transition,
+        id_to_obj_type,
+        precomputed=precomputed,
+    )
+
+    iter_time = time.time() - iter_start_time
+
+    # Return results needed for stats.update()
+    return (len(traces), failed_replays, iter_time)
 
 
 def _perform_replay_on_occn(
