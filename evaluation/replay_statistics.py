@@ -13,8 +13,9 @@ from rich import box
 class ReplayStatistics:
     """A class to manage tracking and displaying replay statistics."""
 
-    def __init__(self, time_budget, log_dir=None):
+    def __init__(self, time_budget, num_processes, log_dir=None):
         self.time_budget = time_budget
+        self.num_processes = num_processes
         self.start_time = time.time()
         self.passed_time = 0
         self.i = 0
@@ -48,7 +49,11 @@ class ReplayStatistics:
             f"[bold]Time Budget:[/bold] [cyan]{self.time_budget}s[/cyan]\n"
             f"[bold]Initial Marking:[/bold] {config['initial_marking']}\n"
             f"[bold]Final Marking:[/bold] {config['final_marking']}\n"
-            f"[bold]Playout Parameters:[/bold] {config['parameters']}"
+            f"[bold]Playout Parameters:[/bold] {config['parameters']}\n"
+            f"[bold]Number of Processes:[/bold] [cyan]{self.num_processes}[/cyan]\n"
+            f"[bold]Log Directory:[/bold] [cyan]{self.log_dir if self.log_dir else 'None'}[/cyan]\n"
+            f"[bold]Log File:[/bold] [cyan]{self.log_file if self.log_file else 'None'}[/cyan]\n"
+            f"[bold]Start Time:[/bold] [cyan]{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}[/cyan]"            
         )
         header_panel = Panel(
             Align.center(config_text, vertical="top"),

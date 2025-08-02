@@ -448,7 +448,7 @@ def _execute_ocpn_playout_and_replay_on_occn(
 
     # --- UI and Statistics Initialization ---
     console = Console()
-    stats = ReplayStatistics(time_budget, log_dir=LOG_DIR)
+    stats = ReplayStatistics(time_budget, NUM_PROCESSES, log_dir=LOG_DIR)
     stats.print_header(
         console,
         header_title,
@@ -695,7 +695,7 @@ def _execute_occn_playout_and_replay_on_ocpn(
 
     # --- UI and Statistics Initialization ---
     console = Console()
-    stats = ReplayStatistics(time_budget, log_dir=LOG_DIR)
+    stats = ReplayStatistics(time_budget, NUM_PROCESSES, log_dir=LOG_DIR)
     stats.print_header(console, header_title, ocel_name, config)
 
     # --- Main Loop with Live Display ---
