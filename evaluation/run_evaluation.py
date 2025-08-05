@@ -28,12 +28,12 @@ from replay_statistics import ReplayStatistics
 from playout_parameters import playout_parameters
 from running_ex import occn_running_ex, ocpn_running_ex
 from container_logistics_occn import occn_container_logistics
-from p2p_occn import occn_p2p
+from p2p_occn import occn_p2p, occn_p2p_small
 
 LOG_DIR = "evaluation/logs"
 
 # Number of concurrent processes to use for the evaluation
-NUM_PROCESSES = 2
+NUM_PROCESSES = 1
 
 
 def evaluation():
@@ -44,17 +44,17 @@ def evaluation():
     - Discover OCPN, convert to OCCN, play-out on the original OCPN and replay on the converted OCCN. ("playout_ocpn_replay_on_converted_occn")
     - Discover OCPN, convert to OCCN, play-out on the converted OCCN and replay on the original OCPN. ("playout_converted_occn_replay_on_ocpn")
     - Discover OCCN, convert to OCPN, play-out on the original OCCN and replay on the converted OCPN. ("playout_occn_replay_on_converted_ocpn")
-    - Discover OCCN, convert to OCPN, play-out on the converted OCPN and replay on the original OCCN. ("playout_converted_ocpn_replay_on_occn")
+    - Discover OCCN, convert to OCPN, play-out on the converted OCPN and replay on the original OCCN. ("playout_ocpn_replay_on_original_occn")
     """
     # Each dictionary specifies the OCEL and the variants to run with their
     # respective configurations.
     evaluation_plan = [
         {
-            "ocel_name": "running_ex",
+            "ocel_name": "ocel2-p2p-small.json",
             "variants_to_run": {
-                "playout_converted_occn_replay_on_ocpn": {
+                "playout_ocpn_replay_on_original_occn": {
                     "config_id": 0,
-                    "time_budget": 30,
+                    "time_budget": 60*60,
                 },
             },
         },
@@ -252,6 +252,8 @@ def discover_occn(ocel_name):
         occn = occn_container_logistics()
     elif ocel_name == "ocel2-p2p.json":
         occn = occn_p2p()
+    elif ocel_name == "ocel2-p2p-small.json":
+        occn = occn_p2p_small()
     else:
         raise ValueError(f"Unknown OCCN for OCEL name: {ocel_name}")
 
@@ -937,6 +939,9 @@ def replay_on_original_occn(
         The number of failed replays.
     """
     failed_replays = 0
+
+    if len(traces) != 0:
+        print(f"Replaying {len(traces)} traces on the original OCCN...") # TODO REMOVE THIS; DEBUGGING ONLY
 
     # replay every trace
     for trace in traces:

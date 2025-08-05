@@ -100,6 +100,21 @@ def playout_parameters(ocel_name, config_id, playout_mode):
                 "quotation": 1,
                 "payment": 1,
             }
+    elif ocel_name == "ocel2-p2p-small.json":
+        if config_id == 0:
+            original_ocpn_branching_factor = 1.6
+            converted_occn_branching_factor = 1.25
+            original_occn_branching_factor = 1.5
+            converted_ocpn_branching_factor = 1.5
+            max_bindings_per_activity = 5
+            object_numbers = {
+                "material": 1,
+                "purchase_order": 1,
+                "purchase_requisition": 1,
+                "quotation": 1,
+                "payment": 1,
+            }
+            
     elif ocel_name == "running_ex":
         if config_id == 0:
             original_ocpn_branching_factor = 1.2
