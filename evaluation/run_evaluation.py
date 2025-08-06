@@ -940,9 +940,6 @@ def replay_on_original_occn(
     """
     failed_replays = 0
 
-    if len(traces) != 0:
-        print(f"Replaying {len(traces)} traces on the original OCCN...") # TODO REMOVE THIS; DEBUGGING ONLY
-
     # replay every trace
     for trace in traces:
         # Convert trace to corresponding OCCN sequence
