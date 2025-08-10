@@ -28,7 +28,7 @@ from replay_statistics import ReplayStatistics
 from playout_parameters import playout_parameters
 from running_ex import occn_running_ex, ocpn_running_ex
 from container_logistics_occn import occn_container_logistics
-from p2p_occn import occn_p2p, occn_p2p_small
+from p2p_occn import occn_p2p, occn_p2p_small, occn_p2p_smaller
 
 LOG_DIR = "evaluation/logs"
 
@@ -50,12 +50,12 @@ def evaluation():
     # respective configurations.
     evaluation_plan = [
         {
-            "ocel_name": "ocel2-p2p-small.json",
+            "ocel_name": "ContainerLogistics.json",
             "variants_to_run": {
-                "playout_ocpn_replay_on_original_occn": {
-                    "config_id": 0,
-                    "time_budget": 60*60,
-                },
+                "playout_ocpn_replay_on_original_occn": { 
+                    "config_id": 2,
+                    "time_budget": 14 * 60 * 60,
+                }
             },
         },
     ]
@@ -254,6 +254,8 @@ def discover_occn(ocel_name):
         occn = occn_p2p()
     elif ocel_name == "ocel2-p2p-small.json":
         occn = occn_p2p_small()
+    elif ocel_name == "ocel2-p2p-smaller.json":
+        occn = occn_p2p_smaller()
     else:
         raise ValueError(f"Unknown OCCN for OCEL name: {ocel_name}")
 

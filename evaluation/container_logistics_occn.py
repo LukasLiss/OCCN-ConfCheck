@@ -5,7 +5,7 @@ def occn_container_logistics():
     marker_groups = {
         "START_Container": {
             "omg": [
-                [("Order Empty Containers", "Container", (1, -1), 0)],
+                [("Order Empty Containers", "Container", (1, 1), 0)],
             ],
         },
         # 1 transport document for >= 1 container(s)
@@ -33,7 +33,7 @@ def occn_container_logistics():
         },
         "START_Handling Unit": {
             "omg": [
-                [("Collect Goods", "Handling Unit", (1, -1), 0)],
+                [("Collect Goods", "Handling Unit", (1, 1), 0)],
             ],
         },
         "Collect Goods": {
@@ -61,7 +61,7 @@ def occn_container_logistics():
         },
         "END_Handling Unit": {
             "img": [
-                [("Load Truck", "Handling Unit", (1, -1), 0)],
+                [("Load Truck", "Handling Unit", (1, 1), 0)],
             ],
         },
         "Drive to Terminal": {
@@ -106,12 +106,12 @@ def occn_container_logistics():
         },
         "START_Transport Document": {
             "omg": [
-                [("Create Transport Document", "Transport Document", (1, -1), 0)],
+                [("Create Transport Document", "Transport Document", (1, 1), 0)],
             ],
         },
         "START_Customer Order": {
             "omg": [
-                [("Register Customer Order", "Customer Order", (1, -1), 0)],
+                [("Register Customer Order", "Customer Order", (1, 1), 0)],
             ],
         },
         "Register Customer Order": {
@@ -134,7 +134,7 @@ def occn_container_logistics():
         },
         "END_Customer Order": {
             "img": [
-                [("Create Transport Document", "Customer Order", (1, -1), 0)],
+                [("Create Transport Document", "Customer Order", (1, 1), 0)],
             ],
         },
         "Book Vehicles": {
@@ -157,12 +157,12 @@ def occn_container_logistics():
         },
         "END_Transport Document": {
             "img": [
-                [("Depart", "Transport Document", (1, -1), 0)],
+                [("Depart", "Transport Document", (1, 1), 0)],
             ],
         },
         "END_Container": {
             "img": [
-                [("Depart", "Container", (1, -1), 0)],
+                [("Depart", "Container", (1, 1), 0)],
             ],
         },
     }
