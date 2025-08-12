@@ -53,7 +53,7 @@ def evaluation():
             "ocel_name": "ContainerLogistics.json",
             "variants_to_run": {
                 "playout_ocpn_replay_on_original_occn": { 
-                    "config_id": 3,
+                    "config_id": 4,
                     "time_budget": 14 * 60 * 60,
                 }
             },
