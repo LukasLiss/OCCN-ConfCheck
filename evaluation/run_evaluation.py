@@ -33,7 +33,7 @@ from p2p_occn import occn_p2p, occn_p2p_small, occn_p2p_smaller
 LOG_DIR = "evaluation/logs"
 
 # Number of concurrent processes to use for the evaluation
-NUM_PROCESSES = 1
+NUM_PROCESSES = 20
 
 
 def evaluation():
@@ -50,11 +50,11 @@ def evaluation():
     # respective configurations.
     evaluation_plan = [
         {
-            "ocel_name": "ContainerLogistics.json",
+            "ocel_name": "ocel2-p2p.json",
             "variants_to_run": {
                 "playout_ocpn_replay_on_original_occn": { 
-                    "config_id": 4,
-                    "time_budget": 14 * 60 * 60,
+                    "config_id": 1,
+                    "time_budget": 24 * 60 * 60,
                 }
             },
         },

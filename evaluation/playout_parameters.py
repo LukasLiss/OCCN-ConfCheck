@@ -85,7 +85,7 @@ def playout_parameters(ocel_name, config_id, playout_mode):
             original_ocpn_branching_factor = 1.4
             converted_occn_branching_factor = 1.2
             original_occn_branching_factor = 1.2
-            converted_ocpn_branching_factor = 1.6
+            converted_ocpn_branching_factor = 1.75
             max_bindings_per_activity = 5
             object_numbers = {
                 "Customer Order": 1,
@@ -113,7 +113,7 @@ def playout_parameters(ocel_name, config_id, playout_mode):
             original_ocpn_branching_factor = 1.6
             converted_occn_branching_factor = 1.25
             original_occn_branching_factor = 1.4
-            converted_ocpn_branching_factor = 1.2
+            converted_ocpn_branching_factor = 3.5
             max_bindings_per_activity = 5
             object_numbers = {
                 "goods receipt": 2,
