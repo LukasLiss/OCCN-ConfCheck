@@ -69,6 +69,18 @@ def playout_parameters(ocel_name, config_id, playout_mode):
                 "Container": 2,
                 "Handling Unit": 2,
             }
+        elif config_id == 3:  # subset of ots (for occn) and fewer objects
+            original_ocpn_branching_factor = 1.4
+            converted_occn_branching_factor = 1.2
+            original_occn_branching_factor = 1.2
+            converted_ocpn_branching_factor = 2
+            max_bindings_per_activity = 5
+            object_numbers = {
+                "Customer Order": 1,
+                "Transport Document": 1,
+                "Container": 1,
+                "Handling Unit": 1,
+            }
     elif ocel_name == "ocel2-p2p.json":
         if config_id == 0:
             original_ocpn_branching_factor = 1.6
