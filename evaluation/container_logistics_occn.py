@@ -124,12 +124,16 @@ def occn_container_logistics():
         },
         "Create Transport Document": {
             "img": [
-                [("START_Transport Document", "Transport Document", (1, 1), 0)],
-                [("Register Customer Order", "Customer Order", (1, 1), 0)],
+                [
+                    ("START_Transport Document", "Transport Document", (1, 1), 0),
+                    ("Register Customer Order", "Customer Order", (1, 1), 0),
+                ],
             ],
             "omg": [
-                [("Book Vehicles", "Transport Document", (1, 1), 0)],
-                [("END_Customer Order", "Customer Order", (1, 1), 0)],
+                [
+                    ("Book Vehicles", "Transport Document", (1, 1), 0),
+                    ("END_Customer Order", "Customer Order", (1, 1), 0),
+                ],
             ],
         },
         "END_Customer Order": {
@@ -147,12 +151,16 @@ def occn_container_logistics():
         },
         "Depart": {
             "img": [
-                [("Order Empty Containers", "Transport Document", (1, 1), 0)],
-                [("Load to Vehicle", "Container", (1, -1), 0)],
+                [
+                    ("Order Empty Containers", "Transport Document", (1, 1), 0),
+                    ("Load to Vehicle", "Container", (1, -1), 0),
+                ],
             ],
             "omg": [
-                [("END_Transport Document", "Transport Document", (1, 1), 0)],
-                [("END_Container", "Container", (1, -1), 0)],
+                [
+                    ("END_Transport Document", "Transport Document", (1, 1), 0),
+                    ("END_Container", "Container", (1, -1), 0),
+                ],
             ],
         },
         "END_Transport Document": {
