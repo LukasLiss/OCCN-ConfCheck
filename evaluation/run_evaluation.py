@@ -29,11 +29,13 @@ from playout_parameters import playout_parameters
 from running_ex import occn_running_ex, ocpn_running_ex
 from container_logistics_occn import occn_container_logistics
 from p2p_occn import occn_p2p, occn_p2p_small, occn_p2p_smaller
+from oc_flexible_heuristics_miner import SimpleOCCNet, visualizer
+
 
 LOG_DIR = "evaluation/logs"
 
 # Number of concurrent processes to use for the evaluation
-NUM_PROCESSES = 20
+NUM_PROCESSES = 2
 
 
 def evaluation():
@@ -50,9 +52,9 @@ def evaluation():
     # respective configurations.
     evaluation_plan = [
         {
-            "ocel_name": "ocel2-p2p.json",
+            "ocel_name": "ContainerLogistics.json",
             "variants_to_run": {
-                "playout_ocpn_replay_on_original_occn": { 
+                "playout_ocpn_replay_on_converted_occn": {
                     "config_id": 1,
                     "time_budget": 24 * 60 * 60,
                 }
@@ -129,6 +131,10 @@ def eval_ocpn(ocel_name, variant_params):
 
     # Convert to OCCausalNet object
     occn = ocpn_converter.apply(ocpn, variant=ocpn_converter.Variants.TO_OC_CAUSAL_NET)
+    # Save Visualization
+    visualizer(
+        SimpleOCCNet.create_from_OCCausalNet(occn), "evaluation/occn_visualization/"
+    )
 
     # Variant 1: Playout OCPN and replay on converted OCCN
     if "playout_ocpn_replay_on_converted_occn" in variant_params:
@@ -258,6 +264,11 @@ def discover_occn(ocel_name):
         occn = occn_p2p_smaller()
     else:
         raise ValueError(f"Unknown OCCN for OCEL name: {ocel_name}")
+
+    # save viz
+    visualizer(
+        SimpleOCCNet.create_from_OCCausalNet(occn), "evaluation/occn_visualization/"
+    )
 
     return occn
 
@@ -710,17 +721,17 @@ def _execute_occn_playout_and_replay_on_ocpn(
         refresh_per_second=4,
         vertical_overflow="visible",
     ) as live:
-        
+
         with Manager() as manager:
             # use manager to create shared memoization dictionaries
             # (only used for playout mode "occn_replay_on_converted_ocpn")
             memo_reachable = manager.dict()
             memo_unreachable = manager.dict()
-            
+
             # Fill worker pool with initial tasks
             executor = ProcessPoolExecutor(max_workers=NUM_PROCESSES)
             active_futures = set()
-            
+
             for _ in range(NUM_PROCESSES):
                 future = executor.submit(
                     _run_single_occn_playout_and_replay_on_ocpn_iteration,
@@ -731,17 +742,17 @@ def _execute_occn_playout_and_replay_on_ocpn(
                     ocpn,
                     ocpn_initial_marking,
                     ocpn_final_marking,
-                    memo_reachable,  
+                    memo_reachable,
                     memo_unreachable,
                     precomputed,
                 )
                 active_futures.add(future)
-                
+
             # As long as there is time left, restart any completed task
             while active_futures and stats.passed_time < time_budget:
                 # Wait for the first process to finish its task
                 done_futures, _ = wait(active_futures, return_when=FIRST_COMPLETED)
-                
+
                 for future in done_futures:
                     # Collect results and update statistics
                     num_sequences, failed_replays, iter_time = future.result()
@@ -766,13 +777,14 @@ def _execute_occn_playout_and_replay_on_ocpn(
                             precomputed,
                         )
                         active_futures.add(new_future)
-            
+
             # Time budget is exceeded, cancel all remaining tasks
             executor.shutdown(wait=False, cancel_futures=True)
 
     # --- Footer ---
     stats.print_footer(console)
-    
+
+
 def _run_single_occn_playout_and_replay_on_ocpn_iteration(
     occn,
     objects,

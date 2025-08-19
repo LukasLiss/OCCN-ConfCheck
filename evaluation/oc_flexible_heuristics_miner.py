@@ -967,10 +967,9 @@ def filter4(inputBindings, outputBindings, threshold, activityCount):
 
 def visualizer(
     occnet,
-    dependencyGraph,
     vizFilePath,
 ):
-    
+    dependencyGraph = occnet.dependencyGraph
     graphTable = []
     placedNodes = []
     nodesToPlace = copy.deepcopy(list(occnet.dependencyGraph._adj.keys()))
@@ -1490,6 +1489,38 @@ class SimpleOCCNet:
             output_bindings,
             input_bindings,
         )
+    
+    @classmethod
+    def create_from_OCCausalNet(cls, occn: OCCausalNet):
+        """
+        Create a SimpleOCCNet from the OCCausalNet class representation.
+        """
+        def _convert_marker_group(marker_group):
+            """
+            Converts a OCCausalNet.MarkerGroup object to a tuple of a list of makers
+            and the support count.
+            """
+            return ([
+                    (marker.related_activity, marker.object_type, marker.marker_key, (marker.min_count, marker.max_count))
+                    for marker in marker_group.markers
+                ], marker_group.support_count)
+        dependencyGraph = occn.dependency_graph
+        input_bindings = {
+            act: [_convert_marker_group(marker_group) for marker_group in marker_groups]
+            for act, marker_groups in occn.input_marker_groups.items()
+        }
+        output_bindings = {
+            act: [_convert_marker_group(marker_group) for marker_group in marker_groups]
+            for act, marker_groups in occn.output_marker_groups.items()
+        }
+        activity_count = {act: 1 for act in occn.activities}
+
+        return cls(
+            dependencyGraph,
+            output_bindings,
+            input_bindings,
+            activity_count
+        )
 
 
 class ParentNode:
@@ -1712,7 +1743,6 @@ def discover_occn_fhm(eventLog, eventLogForMiner, objectTypes, relativeOccurance
     if visualize:
         visualizer(
             occnet,
-            dependencyGraph,
             vizFilePath="evaluation/occn_visualization/",
         )
     
@@ -1753,7 +1783,6 @@ def occn_from_dump(inputDirName, relativeOccuranceThreshold, visualize=False) ->
     if visualize:
         visualizer(
             occnet,
-            dependencyGraph,
             vizFilePath="evaluation/occn_visualization/",
         )
     
