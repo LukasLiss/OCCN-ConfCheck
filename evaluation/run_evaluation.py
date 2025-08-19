@@ -19,8 +19,9 @@ from pm4py.algo.simulation.playout.ocpn.variants.extensive import (
 from pm4py.algo.simulation.playout.oc_causal_net.variants.extensive import (
     apply as playout_occn_extensive,
 )
-from pm4py.objects.ocpn.obj import OCMarking
+from pm4py.objects.ocpn.obj import OCMarking, OCPetriNet
 from pm4py.objects.ocpn.semantics import OCPetriNetSemantics
+from pm4py.visualization.ocel.ocpn import visualizer as ocpn_visualizer
 
 from converted_occn_semantics import ConvertedOCCausalNetSemantics
 from converted_ocpn_semantics import ConvertedOCPetriNetSemantics
@@ -52,10 +53,10 @@ def evaluation():
     # respective configurations.
     evaluation_plan = [
         {
-            "ocel_name": "ContainerLogistics.json",
+            "ocel_name": "ocel2-p2p.json",
             "variants_to_run": {
-                "playout_ocpn_replay_on_converted_occn": {
-                    "config_id": 1,
+                "playout_occn_replay_on_converted_ocpn": {
+                    "config_id": 0,
                     "time_budget": 24 * 60 * 60,
                 }
             },
@@ -179,7 +180,12 @@ def eval_occn(ocel_name, variant_params):
 
     # Convert to OCPetriNet object
     ocpn = occn_converter.apply(occn, variant=occn_converter.Variants.TO_OCPN)
-    _save_viz_ocpn_converted(ocpn, ocel_name)
+
+    # Precomputed values for viz and converted OCPN replay
+    precomputed = ConvertedOCPetriNetSemantics.precompute_ocpn_replay_params(ocpn, occn)
+
+    # Visualize
+    _save_viz_ocpn_converted(ocpn, occn, precomputed, ocel_name)
 
     # Variant 1: Playout OCCN and replay on converted OCPN
     if "playout_occn_replay_on_converted_ocpn" in variant_params:
@@ -200,6 +206,7 @@ def eval_occn(ocel_name, variant_params):
             occn,
             ocel_name,
             time_budget=params["time_budget"],
+            precomputed=precomputed,
             config_id=params["config_id"],
         )
 
@@ -372,7 +379,7 @@ def playout_ocpn_replay_on_converted_occn(
 
 
 def playout_ocpn_replay_on_original_occn(
-    ocpn, occn, ocel_name, time_budget, config_id=0
+    ocpn, occn, ocel_name, time_budget, precomputed, config_id=0
 ):
     """
     Generate random traces from the OCPN and replay them on the original OCCN.
@@ -387,9 +394,9 @@ def playout_ocpn_replay_on_original_occn(
         The name of the OCEL file, used for getting parameters and logging.
     time_budget : int
         The time budget for the play-out process in seconds.
+    precomputed : dict
+        Additional precomputed parameters for the play-out algorithm
     """
-    precomputed = ConvertedOCPetriNetSemantics.precompute_ocpn_replay_params(ocpn, occn)
-
     _execute_ocpn_playout_and_replay_on_occn(
         ocpn,
         occn,
@@ -1084,7 +1091,7 @@ def replay_on_converted_ocpn(
     return failed_replays, successful_replays
 
 
-def _save_viz_ocpn_converted(ocpn, ocel_name):
+def _save_viz_ocpn_converted(ocpn, occn, precomputed, ocel_name):
     """
     Transforms the OCPetriNet to the alternate format and saves a visualization.
 
@@ -1092,20 +1099,121 @@ def _save_viz_ocpn_converted(ocpn, ocel_name):
     ----------
     ocpn : OCPetriNet
         The OCPetriNet object to visualize.
+    occn : OCCausalNet
+        Original OCCausalNet object.
+    precomputed
+        Precomputed parameters for visualization.
     ocel_name : str
         The name of the OCEL file, used for naming the visualization file.
     """
+    # adjust converted ocpn for visualization
+    ocpn_adjusted = _prepare_converted_ocpn_for_viz(ocpn, occn, precomputed)
+
     # convert to alternate format
     alternate_ocpn = ocpn_converter.apply(
-        ocpn, variant=ocpn_converter.Variants.TO_ALTERNATIVE_FORMAT
+        ocpn_adjusted, variant=ocpn_converter.Variants.TO_ALTERNATIVE_FORMAT
     )
 
     # create converted_ocpns directory if it doesn't exist
     if not os.path.exists("evaluation/converted_ocpns"):
         os.makedirs("evaluation/converted_ocpns")
-    # Save visualization
+    # Save visualization as png
     path_png = os.path.join("evaluation", "converted_ocpns", f"{ocel_name}.png")
     pm4py.save_vis_ocpn(alternate_ocpn, path_png)
+    # save as gv
+    path_gv = os.path.join("evaluation", "converted_ocpns", f"{ocel_name}.gv")
+    ocpn_visualizer.save(ocpn_visualizer.apply(alternate_ocpn), path_gv)
+
+
+def _prepare_converted_ocpn_for_viz(ocpn, occn, precomputed):
+    """
+    Prepares the converted OCPN for visualization by applying necessary adjustments.
+    Removes the global binding place and replaces it with a dedicated binding place per
+    activity.
+    Does not modify the original but returns a modified copy.
+
+    Parameters
+    ----------
+    ocpn : OCPetriNet
+        The converted OCPetriNet object to prepare for visualization.
+    occn : OCCausalNet
+        Original OCCausalNet object.
+    precomputed : dict
+        Precomputed parameters for viz
+
+    Returns
+    -------
+    OCPetriNet
+        The adjusted OCPetriNet object.
+    """
+    subnets = precomputed["subnet"]
+
+    # new binding places
+    binding_places = {}
+
+    # new modified arcs
+    arcs = set()
+
+    # new transitions
+    transitions = {}
+
+    for act in occn.activities:
+        binding_places[act] = OCPetriNet.Place(
+            name=f"p_binding_global_input_{act}", object_type="_binding"
+        )
+
+        # go through the activity subnet and replace arcs
+        subnet = subnets[act]
+        for t in subnet.transitions:
+            transitions[t.name] = OCPetriNet.Transition(
+                name=t.name, label=t.label, properties=t.properties
+            )
+            for arc in t.in_arcs:
+                if arc.source.name == "p_binding_global_input":
+                    # new arc
+                    arc_new = OCPetriNet.Arc(
+                        source=binding_places[act],
+                        target=transitions[t.name],
+                        object_type=arc.object_type,
+                        is_variable=arc.is_variable,
+                        properties=arc.properties,
+                    )
+                    transitions[t.name].add_in_arc(arc_new)
+                    binding_places[act].add_out_arc(arc_new)
+                    arcs.add(arc_new)
+                else:
+                    arcs.add(arc)
+
+            for arc in t.out_arcs:
+                if arc.target.name == "p_binding_global_input":
+                    # new arc
+                    arc_new = OCPetriNet.Arc(
+                        source=transitions[t.name],
+                        target=binding_places[act],
+                        object_type=arc.object_type,
+                        is_variable=arc.is_variable,
+                        properties=arc.properties,
+                    )
+                    binding_places[act].add_in_arc(arc_new)
+                    transitions[t.name].add_out_arc(arc_new)
+                    arcs.add(arc_new)
+                else:
+                    arcs.add(arc)
+
+    # remove global binding place and add binding places
+    places = [
+        place for place in ocpn.places if place.name != "p_binding_global_input"
+    ] + list(binding_places.values())
+
+    return OCPetriNet(
+        name=ocpn.name,
+        places=places,
+        transitions=list(transitions.values()),
+        arcs=arcs,
+        initial_marking=ocpn.initial_marking,
+        final_marking=ocpn.final_marking,
+        properties=ocpn.properties,
+    )
 
 
 if __name__ == "__main__":
