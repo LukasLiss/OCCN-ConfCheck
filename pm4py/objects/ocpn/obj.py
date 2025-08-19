@@ -357,7 +357,6 @@ class OCPetriNet(PetriNet):
                 src,
                 tgt,
                 a.object_type,
-                weight=a.weight,
                 is_variable=a.is_variable,
                 properties=a.properties,
             )
