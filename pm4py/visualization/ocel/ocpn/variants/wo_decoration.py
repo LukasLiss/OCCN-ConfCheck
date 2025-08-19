@@ -167,16 +167,17 @@ def apply(
 
         for trans in net.transitions:
             if trans.label is not None:
-                transition_map[trans] = activities_map[trans.label]
+                transition_map[trans.name] = activities_map[trans.label]
             else:
-                transition_map[trans] = str(uuid.uuid4())
-                viz.node(
-                    transition_map[trans],
-                    label=" ",
-                    shape="box",
-                    style="filled",
-                    fillcolor=otc,
-                )
+                if trans.name not in transition_map.keys():
+                    transition_map[trans.name] = str(uuid.uuid4())
+                    viz.node(
+                        transition_map[trans.name],
+                        label=" ",
+                        shape="box",
+                        #style="filled",
+                        #fillcolor=otc,
+                    )
 
         for arc in net.arcs:
             arc_label = " "
@@ -190,7 +191,7 @@ def apply(
                     arc_label = str(all_trans_diagn[arc.target])
                 viz.edge(
                     places[arc.source],
-                    transition_map[arc.target],
+                    transition_map[arc.target.name],
                     color=otc,
                     penwidth=penwidth,
                     label=arc_label,
@@ -204,7 +205,7 @@ def apply(
                 if arc.source in all_trans_diagn:
                     arc_label = str(all_trans_diagn[arc.source])
                 viz.edge(
-                    transition_map[arc.source],
+                    transition_map[arc.source.name],
                     places[arc.target],
                     color=otc,
                     penwidth=penwidth,
