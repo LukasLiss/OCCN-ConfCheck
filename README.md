@@ -47,7 +47,7 @@ A special challenge arises when a transition has multiple outgoing variable arcs
 For a detailed technical explanation and the formal proof of correctness, please refer to the thesis [1].
 
 An example is given below. The object-centric Petri net (top) is transformed into the object-centric causal net (bottom).
-<img width="2426" height="793" alt="OCPN for the running example" src="https://github.com/user-attachments/assets/d2cd67fc-b803-4da6-86b8-6553a6419de8" />
+<img width="1883" height="599" alt="Mined OCPN for the running example" src="https://github.com/user-attachments/assets/34959bbe-da9a-4283-8738-f2af9b9c304e" />
 <img width="2518" height="438" alt="Transformed OCCN for the running example" src="https://github.com/user-attachments/assets/efadb786-7109-44f1-ba12-c077bf76e810" />
 
 ## Transformation: OCCN → OCPN
