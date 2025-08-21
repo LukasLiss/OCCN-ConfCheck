@@ -70,7 +70,7 @@ The core ideas are:
 This approach ensures that all valid behavior of the OCCN is possible in the transformed OCPN. The potential for extra behaviors (underfitting) arises from certain OCCN constraints that cannot be represented in the OCPN formalism. For a comprehensive explanation and formal proofs, please consult the thesis [1].
 
 An example is given below. The object-centric causal net (top) is transformed into the object-centric Petri net (bottom). Note that all places labeled *b* refer to the same place.
-<img width="1597" height="787" alt="OCCN for the running example" src="https://github.com/user-attachments/assets/5a49e781-2fb9-441e-870b-d92a053bf4f9" />
+<img width="1876" height="660" alt="Mined OCCN for the running example" src="https://github.com/user-attachments/assets/25c42a7a-6c22-49df-8e03-1263a835f0f7" />
 <img width="6532" height="1291" alt="Transformed OCPN for the running example" src="https://github.com/user-attachments/assets/5262f2a6-b275-4d91-96f7-ff135a4259d3" />
 
 
