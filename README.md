@@ -48,7 +48,7 @@ For a detailed technical explanation and the formal proof of correctness, please
 
 An example is given below. The object-centric Petri net (top) is transformed into the object-centric causal net (bottom).
 <img width="2426" height="793" alt="OCPN for the running example" src="https://github.com/user-attachments/assets/d2cd67fc-b803-4da6-86b8-6553a6419de8" />
-<img width="2034" height="374" alt="Transformed OCCN for the running example" src="https://github.com/user-attachments/assets/c9d9e9fc-9e0a-4d32-9ebf-68c19ecd720f" />
+<img width="2518" height="438" alt="Transformed OCCN for the running example" src="https://github.com/user-attachments/assets/efadb786-7109-44f1-ba12-c077bf76e810" />
 
 ## Transformation: OCCN → OCPN
 
