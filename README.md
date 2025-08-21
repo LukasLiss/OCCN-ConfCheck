@@ -1,4 +1,4 @@
-# OCCN-OCPN Transformation for pm4py
+# OCCN-OCPN Transformation
 
 This repository contains an implementation of transformations between **object-centric causal nets (OCCNs)** and **object-centric Petri nets (OCPNs)**. This work was developed as part of the bachelor's thesis *"A Transformation between Object-Centric Causal Nets and Object-Centric Petri Nets"* [1].
 
