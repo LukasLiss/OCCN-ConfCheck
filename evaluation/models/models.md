@@ -12,7 +12,7 @@ All circular markers have cardinalities $c=(1,1)$ and all square markers $c=(1, 
 
 Note that the output marker group of `Receive Feedback` contains two pairs of markers that share keys.
 
-\<img src="./assets/Mined_OCCNs/Running_Example.png" alt="Running Example - Mined OCCN" width="600"\>
+![Running Example - Mined OCCN](assets/Mined_OCCNs/Running_Example.png)
 
 *Objects for play-out:*
 
@@ -26,7 +26,7 @@ Note that the output marker group of `Receive Feedback` contains two pairs of ma
 
 **ContainerLogistics**
 
-\<img src="./assets/Mined_OCCNs/ContainerLogistics.png" alt="ContainerLogistics - Mined OCCN" width="600"\>
+![ContainerLogistics - Mined OCCN](assets/Mined_OCCNs/ContainerLogistics.png)
 
 *Objects for play-out:*
 
@@ -41,7 +41,7 @@ Note that the output marker group of `Receive Feedback` contains two pairs of ma
 
 **P2P**
 
-\<img src="./assets/Mined_OCCNs/P2P.png" alt="P2P - Mined OCCN" width="600"\>
+![P2P - Mined OCCN](assets/Mined_OCCNs/P2P.png)
 
 *Objects for play-out:*
 
@@ -67,7 +67,7 @@ Please note that the global binding place has been duplicated for every activity
 
 Here, all duplicated global binding places are labeled *b*. These all refer to the same place.
 
-\<img src="./assets/Converted_OCPNs/Running_Example.png" alt="Running Example - Transformed OCPN" width="600"\>
+![Running Example - Transformed OCPN](assets/Converted_OCPNs/Running_Example.png)
 
 *Objects for play-out:*
 
@@ -81,7 +81,7 @@ Here, all duplicated global binding places are labeled *b*. These all refer to t
 
 **ContainerLogistics**
 
-\<img src="./assets/Converted_OCPNs/ContainerLogistics.png" alt="ContainerLogistics - Transformed OCPN" width="600"\>
+![ContainerLogistics - Transformed OCPN](assets/Converted_OCPNs/ContainerLogistics.png)
 
 *Objects for play-out:*
 
@@ -96,7 +96,7 @@ Here, all duplicated global binding places are labeled *b*. These all refer to t
 
 **P2P**
 
-\<img src="./assets/Converted_OCPNs/P2P.png" alt="P2P - Transformed OCPN" width="600"\>
+![P2P - Transformed OCPN](assets/Converted_OCPNs/P2P.png)
 
 *Objects for play-out:*
 
@@ -120,7 +120,7 @@ These OCPNs were not adjusted after mining from OCELs (or manually constructed i
 
 **Running Example**
 
-\<img src="./assets/Mined_OCPNs/Running_Example.png" alt="Running Example - Mined OCPN" width="600"\>
+![Running Example - Transformed OCPN](assets/Mined_OCPNs/Running_Example.png)
 
 *Objects for play-out:*
 
@@ -134,7 +134,7 @@ These OCPNs were not adjusted after mining from OCELs (or manually constructed i
 
 **ContainerLogistics**
 
-\<img src="./assets/Mined_OCPNs/ContainerLogistics.png" alt="ContainerLogistics - Mined OCPN" width="600"\>
+![ContainerLogistics - Transformed OCPN](assets/Mined_OCPNs/ContainerLogistics.png)
 
 *Objects for play-out:*
 
@@ -151,7 +151,8 @@ These OCPNs were not adjusted after mining from OCELs (or manually constructed i
 ```
 
 **P2P**
-\<img src="./assets/Mined_OCPNs/P2P.png" alt="P2P - Mined OCPN" width="600"\>
+
+![P2P - Transformed OCPN](assets/Mined_OCPNs/P2P.png)
 
 *Objects for play-out:*
 
@@ -175,7 +176,7 @@ All circular markers have cardinalities $c=(1,1)$, square markers of places (e.g
 
 **Running Example**
 
-\<img src="./assets/Converted\_OCCNs/Running\_Example.png" alt="Running Example - Transformed OCCN" width="600"\>
+![Running Example - Transformed OCPN](assets/Converted_OCCNs/Running_Example.png)
 
 *Objects for play-out:*
 
