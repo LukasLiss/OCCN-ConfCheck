@@ -27,7 +27,7 @@ from converted_occn_semantics import ConvertedOCCausalNetSemantics
 from converted_ocpn_semantics import ConvertedOCPetriNetSemantics
 from replay_statistics import ReplayStatistics
 from playout_parameters import playout_parameters
-from running_ex import occn_running_ex, ocpn_running_ex
+from running_ex import occn_running_ex, ocpn_running_ex, ocpn_running_ex_labeled
 from container_logistics_occn import occn_container_logistics
 from p2p_occn import occn_p2p, occn_p2p_small, occn_p2p_smaller
 from oc_flexible_heuristics_miner import SimpleOCCNet, visualizer
@@ -36,7 +36,7 @@ from oc_flexible_heuristics_miner import SimpleOCCNet, visualizer
 LOG_DIR = "evaluation/logs"
 
 # Number of concurrent processes to use for the evaluation
-NUM_PROCESSES = 2
+NUM_PROCESSES = 1
 
 
 def evaluation():
@@ -53,7 +53,7 @@ def evaluation():
     # respective configurations.
     evaluation_plan = [
         {
-            "ocel_name": "ocel2-p2p.json",
+            "ocel_name": "running_ex",
             "variants_to_run": {
                 "playout_occn_replay_on_converted_ocpn": {
                     "config_id": 0,
@@ -131,7 +131,10 @@ def eval_ocpn(ocel_name, variant_params):
         ocpn = discover_ocpn(ocel_name)
 
     # Convert to OCCausalNet object
-    occn = ocpn_converter.apply(ocpn, variant=ocpn_converter.Variants.TO_OC_CAUSAL_NET)
+    occn = ocpn_converter.apply(
+        ocpn, variant=ocpn_converter.Variants.TO_OC_CAUSAL_NET
+    )
+
     # Save Visualization
     visualizer(
         SimpleOCCNet.create_from_OCCausalNet(occn), "evaluation/occn_visualization/"
@@ -1157,6 +1160,13 @@ def _prepare_converted_ocpn_for_viz(ocpn, occn, precomputed):
     # new transitions
     transitions = {}
 
+    # new places
+    places = {}
+    for place in ocpn.places:
+        places[place.name] = OCPetriNet.Place(
+            name=place.name, object_type=place.object_type
+        )
+
     for act in occn.activities:
         binding_places[act] = OCPetriNet.Place(
             name=f"p_binding_global_input_{act}", object_type="_binding"
@@ -1169,40 +1179,44 @@ def _prepare_converted_ocpn_for_viz(ocpn, occn, precomputed):
                 name=t.name, label=t.label, properties=t.properties
             )
             for arc in t.in_arcs:
-                if arc.source.name == "p_binding_global_input":
-                    # new arc
-                    arc_new = OCPetriNet.Arc(
-                        source=binding_places[act],
-                        target=transitions[t.name],
-                        object_type=arc.object_type,
-                        is_variable=arc.is_variable,
-                        properties=arc.properties,
-                    )
-                    transitions[t.name].add_in_arc(arc_new)
-                    binding_places[act].add_out_arc(arc_new)
-                    arcs.add(arc_new)
-                else:
-                    arcs.add(arc)
+                source = (
+                    binding_places[act]
+                    if arc.source.name == "p_binding_global_input"
+                    else places[arc.source.name]
+                )
+                # new arc
+                arc_new = OCPetriNet.Arc(
+                    source=source,
+                    target=transitions[t.name],
+                    object_type=arc.object_type,
+                    is_variable=arc.is_variable,
+                    properties=arc.properties,
+                )
+                transitions[t.name].add_in_arc(arc_new)
+                source.add_out_arc(arc_new)
+                arcs.add(arc_new)
 
             for arc in t.out_arcs:
-                if arc.target.name == "p_binding_global_input":
-                    # new arc
-                    arc_new = OCPetriNet.Arc(
-                        source=transitions[t.name],
-                        target=binding_places[act],
-                        object_type=arc.object_type,
-                        is_variable=arc.is_variable,
-                        properties=arc.properties,
-                    )
-                    binding_places[act].add_in_arc(arc_new)
-                    transitions[t.name].add_out_arc(arc_new)
-                    arcs.add(arc_new)
-                else:
-                    arcs.add(arc)
+                target = (
+                    binding_places[act]
+                    if arc.target.name == "p_binding_global_input"
+                    else places[arc.target.name]
+                )
+                # new arc
+                arc_new = OCPetriNet.Arc(
+                    source=transitions[t.name],
+                    target=target,
+                    object_type=arc.object_type,
+                    is_variable=arc.is_variable,
+                    properties=arc.properties,
+                )
+                target.add_in_arc(arc_new)
+                transitions[t.name].add_out_arc(arc_new)
+                arcs.add(arc_new)
 
     # remove global binding place and add binding places
     places = [
-        place for place in ocpn.places if place.name != "p_binding_global_input"
+        place for place in places.values() if place.name != "p_binding_global_input"
     ] + list(binding_places.values())
 
     return OCPetriNet(
