@@ -22,33 +22,11 @@ Many different types of process models exist, each with its own representational
 
 The following components were implemented and are intended for contribution to the `pm4py` ecosystem:
 
-  * Transformation from OCPN to OCCN
   * Transformation from OCCN to OCPN
+  * Transformation from OCPN to OCCN
   * Algorithms for OCCN play-out (log generation) and replay (conformance checking)
   * Algorithms for OCPN play-out and replay
   * A comprehensive suite of unit tests for all new functionalities
-
-## Transformation: OCPN → OCCN
-
-This transformation converts an object-centric Petri net (OCPN) into an object-centric causal net (OCCN) that is **language-equivalent**, meaning it describes the exact same set of behaviors.
-
-  * **Primary file:** `pm4py/objects/ocpn/variants/to_oc_causal_net.py`
-  * **Tests:** `tests/ocpn_test.py`
-
-### High-Level Explanation
-
-The transformation follows established principles, mapping the core components of an OCPN to their OCCN counterparts. In essence:
-
-  * **Places** in the OCPN are converted into unlabeled activities in the OCCN.
-  * **Arcs** connected to transitions become markers. Non-variable arcs are translated to markers with cardinality `(1,1)`, while variable arcs become markers with cardinality `(0,*)`.
-
-A special challenge arises when a transition has multiple outgoing variable arcs for the same object type. OCPN semantics require that an object token consumed by the transition is duplicated and sent to *all* successor places. To preserve this behavior, the transformation introduces a special **auxiliary activity** (`τ`) for some activities in the OCCN. This activity ensures that the object is correctly distributed to all required successors, thus mimicking the OCPN's duplication logic.
-
-For a detailed technical explanation and the formal proof of correctness, please refer to the thesis [1].
-
-An example is given below. The object-centric Petri net (top) is transformed into the object-centric causal net (bottom).
-<img width="1883" height="599" alt="Mined OCPN for the running example" src="https://github.com/user-attachments/assets/34959bbe-da9a-4283-8738-f2af9b9c304e" />
-<img width="2518" height="438" alt="Transformed OCCN for the running example" src="https://github.com/user-attachments/assets/efadb786-7109-44f1-ba12-c077bf76e810" />
 
 ## Transformation: OCCN → OCPN
 
@@ -70,8 +48,32 @@ The core ideas are:
 This approach ensures that all valid behavior of the OCCN is possible in the transformed OCPN. The potential for extra behaviors (underfitting) arises from certain OCCN constraints that cannot be represented in the OCPN formalism. For a comprehensive explanation and formal proofs, please consult the thesis [1].
 
 An example is given below. The object-centric causal net (top) is transformed into the object-centric Petri net (bottom). Note that all places labeled *b* refer to the same place.
+
 <img width="1876" height="660" alt="Mined OCCN for the running example" src="https://github.com/user-attachments/assets/25c42a7a-6c22-49df-8e03-1263a835f0f7" />
 <img width="6532" height="1291" alt="Transformed OCPN for the running example" src="https://github.com/user-attachments/assets/5262f2a6-b275-4d91-96f7-ff135a4259d3" />
+
+## Transformation: OCPN → OCCN
+
+This transformation converts an object-centric Petri net (OCPN) into an object-centric causal net (OCCN) that is **language-equivalent**, meaning it describes the exact same set of behaviors.
+
+  * **Primary file:** `pm4py/objects/ocpn/variants/to_oc_causal_net.py`
+  * **Tests:** `tests/ocpn_test.py`
+
+### High-Level Explanation
+
+The transformation follows established principles, mapping the core components of an OCPN to their OCCN counterparts. In essence:
+
+  * **Places** in the OCPN are converted into unlabeled activities in the OCCN.
+  * **Arcs** connected to transitions become markers. Non-variable arcs are translated to markers with cardinality `(1,1)`, while variable arcs become markers with cardinality `(0,*)`.
+
+A special challenge arises when a transition has multiple outgoing variable arcs for the same object type. OCPN semantics require that an object token consumed by the transition is duplicated and sent to *all* successor places. To preserve this behavior, the transformation introduces a special **auxiliary activity** (`τ`) for some activities in the OCCN. This activity ensures that the object is correctly distributed to all required successors, thus mimicking the OCPN's duplication logic.
+
+For a detailed technical explanation and the formal proof of correctness, please refer to the thesis [1].
+
+An example is given below. The object-centric Petri net (top) is transformed into the object-centric causal net (bottom).
+
+<img width="1883" height="599" alt="Mined OCPN for the running example" src="https://github.com/user-attachments/assets/34959bbe-da9a-4283-8738-f2af9b9c304e" />
+<img width="2518" height="438" alt="Transformed OCCN for the running example" src="https://github.com/user-attachments/assets/efadb786-7109-44f1-ba12-c077bf76e810" />
 
 
 ## Evaluation
