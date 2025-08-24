@@ -33,13 +33,6 @@ class OCCausalNetSimulationTest(unittest.TestCase):
         valid_sequences_iter, _, _ = playout_extensive.apply(occn, objects, parameters)
         valid_sequences = list(valid_sequences_iter)
         self.assertEqual(len(valid_sequences), 252)
-        
-        # objects = {
-        #     "order": {"o1", "o2", "o3"}
-        # }
-        # valid_sequences_iter, _, _ = playout_extensive.apply(occn, objects, parameters)
-        # valid_sequences = list(valid_sequences_iter)
-        # self.assertEqual(len(valid_sequences), 756756)
     
     def test_playout_occn_extensive_bf_limited(self):
         occn = occn_ABC()
