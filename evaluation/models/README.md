@@ -6,7 +6,7 @@ In the following, the 12 models used to evaluate the OCCN-OCPN transformation qu
 
 ### Mined OCCNs
 
-All circular markers have cardinalities $c=(1,1)$ and all square markers $c=(1, *)$, unless denoted otherwise. Markers inside a marker group share the same key if the same number is displayed inside the marker. Please note that after mining these OCCNs from an OCEL, they were manually adjusted such that their language is not empty.
+All circular markers have cardinalities `c=(1,1)` and all square markers `c=(1, *)`, unless denoted otherwise. Markers inside a marker group share the same key if the same number is displayed inside the marker. Please note that after mining these OCCNs from an OCEL, they were manually adjusted such that their language is not empty.
 
 **Running Example**
 
@@ -172,7 +172,7 @@ These OCPNs were not adjusted after mining from OCELs (or manually constructed i
 
 ### Transformed OCCNs from mined OCPNs
 
-All circular markers have cardinalities $c=(1,1)$, square markers of places (e.g., `p1`) have cardinalities $c=(1,*)$, and square markers of transitions (e.g., `a`) have cardinalities $c=(0,*)$.
+All circular markers have cardinalities `c=(1,1)`, square markers of places (e.g., `p1`) have cardinalities `c=(1,*)`, and square markers of transitions (e.g., `a`) have cardinalities `c=(0,*)`.
 
 **Running Example**
 
