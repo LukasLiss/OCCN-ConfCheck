@@ -104,7 +104,7 @@ The evaluation was performed on three object-centric event logs (OCELs):
 2.  **Container Logistics:** A real-world logistics log from the [OCEL standard website](https://ocel-standard.org/event-logs/simulations/logistics/).
 3.  **Procure-to-Pay (P2P):** A classic P2P example log from the [OCEL standard website](https://ocel-standard.org/event-logs/simulations/p2p/).
 
-All 12 models used in the evaluation can be found in the `evaluation/models/` directory.
+All 12 models used in the evaluation can be found in the `evaluation/models/` directory, along with the sets of objects used for their play-out.
 
 ### Results
 
