@@ -27,7 +27,7 @@ from converted_occn_semantics import ConvertedOCCausalNetSemantics
 from converted_ocpn_semantics import ConvertedOCPetriNetSemantics
 from replay_statistics import ReplayStatistics
 from playout_parameters import playout_parameters
-from running_ex import occn_running_ex, ocpn_running_ex, ocpn_running_ex_labeled
+from running_ex import occn_running_ex, ocpn_running_ex
 from container_logistics_occn import occn_container_logistics
 from p2p_occn import occn_p2p, occn_p2p_small, occn_p2p_smaller
 from oc_flexible_heuristics_miner import SimpleOCCNet, visualizer
