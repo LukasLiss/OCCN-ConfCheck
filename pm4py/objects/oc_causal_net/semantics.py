@@ -296,14 +296,26 @@ class OCCausalNetSemantics(Generic[N]):
         # check each group
         for mg in marker_groups:
             mg_dict = mg.dict_representation
+            
+            # Check that markers for all required related activities exist
+            # and all required ots are present
+            failure = False
+            for related_act in obj_counts:
+                if related_act not in mg_dict:
+                    failure = True
+                for ot in obj_counts[related_act]:
+                    if ot not in mg_dict[related_act]:
+                        failure = True
+            if failure:
+                continue
 
             # 1: check that count matches (= is within cardinality bounds)
             counts_match = all(
                 mg_dict[related_act][ot][1]
-                >= obj_counts[related_act][ot]
+                >= obj_counts.get(related_act, {}).get(ot, 0)
                 >= mg_dict[related_act][ot][0]
-                for related_act in obj_counts
-                for ot in obj_counts[related_act]
+                for related_act in mg_dict
+                for ot in mg_dict[related_act]
             )
             if not counts_match:
                 continue
