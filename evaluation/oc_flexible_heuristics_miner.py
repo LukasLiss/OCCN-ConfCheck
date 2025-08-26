@@ -18,7 +18,6 @@ import scipy
 import os
 import numpy as np
 import json
-from pynpm import NPMPackage
 
 from pm4py.objects.oc_causal_net.obj import OCCausalNet
 
