@@ -87,8 +87,8 @@ Here, all duplicated global binding places are labeled *b*. These all refer to t
 
 ```json
 {
-  "Customer Order": 1,
-  "Transport Document": 1,
+  "Customer Order": 2,
+  "Transport Document": 2,
   "Container": 2,
   "Handling Unit": 2
 }
