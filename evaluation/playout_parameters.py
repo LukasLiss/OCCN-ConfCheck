@@ -61,7 +61,7 @@ def playout_parameters(ocel_name, config_id, playout_mode):
             original_ocpn_branching_factor = 1.4
             converted_occn_branching_factor = 1.2
             original_occn_branching_factor = 1.2
-            converted_ocpn_branching_factor = 1.3
+            converted_ocpn_branching_factor = 1.65
             max_bindings_per_activity = 5
             object_numbers = {
                 "Customer Order": 2,
@@ -85,7 +85,7 @@ def playout_parameters(ocel_name, config_id, playout_mode):
             original_ocpn_branching_factor = 1.4
             converted_occn_branching_factor = 1.2
             original_occn_branching_factor = 1.2
-            converted_ocpn_branching_factor = 1.75
+            converted_ocpn_branching_factor = 2.25
             max_bindings_per_activity = 5
             object_numbers = {
                 "Customer Order": 1,
