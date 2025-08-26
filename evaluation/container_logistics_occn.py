@@ -55,53 +55,13 @@ def occn_container_logistics():
             "omg": [
                 [
                     ("END_Handling Unit", "Handling Unit", (1, 1), 0),
-                    ("Drive to Terminal", "Container", (1, 1), 0),
+                    ("Depart", "Container", (1, 1), 0),
                 ],
             ],
         },
         "END_Handling Unit": {
             "img": [
                 [("Load Truck", "Handling Unit", (1, 1), 0)],
-            ],
-        },
-        "Drive to Terminal": {
-            "img": [
-                [("Load Truck", "Container", (1, 1), 0)],
-            ],
-            "omg": [
-                [("Weigh", "Container", (1, 1), 0)],
-            ],
-        },
-        "Weigh": {
-            "img": [
-                [("Drive to Terminal", "Container", (1, 1), 0)],
-            ],
-            "omg": [
-                [("Place in Stock", "Container", (1, 1), 0)],
-            ],
-        },
-        "Place in Stock": {
-            "img": [
-                [("Weigh", "Container", (1, 1), 0)],
-            ],
-            "omg": [
-                [("Bring to Loading Bay", "Container", (1, 1), 0)],
-            ],
-        },
-        "Bring to Loading Bay": {
-            "img": [
-                [("Place in Stock", "Container", (1, 1), 0)],
-            ],
-            "omg": [
-                [("Load to Vehicle", "Container", (1, 1), 0)],
-            ],
-        },
-        "Load to Vehicle": {
-            "img": [
-                [("Bring to Loading Bay", "Container", (1, 1), 0)],
-            ],
-            "omg": [
-                [("Depart", "Container", (1, 1), 0)],
             ],
         },
         "START_Transport Document": {
@@ -153,7 +113,7 @@ def occn_container_logistics():
             "img": [
                 [
                     ("Order Empty Containers", "Transport Document", (1, 1), 0),
-                    ("Load to Vehicle", "Container", (1, -1), 0),
+                    ("Load Truck", "Container", (1, -1), 0),
                 ],
             ],
             "omg": [
