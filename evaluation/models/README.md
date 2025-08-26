@@ -67,7 +67,7 @@ Please note that the global binding place has been duplicated for every activity
 
 Here, all duplicated global binding places are labeled *b*. These all refer to the same place.
 
-![Running Example - Transformed OCPN](assets/Converted_OCPNs/Running_Example.png)
+![Running Example - Transformed OCPN](assets/Converted_OCPNs/Running_Example.svg)
 
 *Objects for play-out:*
 
