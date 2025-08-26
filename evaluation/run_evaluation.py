@@ -36,7 +36,7 @@ from oc_flexible_heuristics_miner import SimpleOCCNet, visualizer
 LOG_DIR = "evaluation/logs"
 
 # Number of concurrent processes to use for the evaluation
-NUM_PROCESSES = 1
+NUM_PROCESSES = 8
 
 
 def evaluation():
@@ -53,9 +53,9 @@ def evaluation():
     # respective configurations.
     evaluation_plan = [
         {
-            "ocel_name": "running_ex",
+            "ocel_name": "ocel2-p2p.json",
             "variants_to_run": {
-                "playout_occn_replay_on_converted_ocpn": {
+                "playout_ocpn_replay_on_original_occn": {
                     "config_id": 0,
                     "time_budget": 24 * 60 * 60,
                 }
@@ -131,9 +131,7 @@ def eval_ocpn(ocel_name, variant_params):
         ocpn = discover_ocpn(ocel_name)
 
     # Convert to OCCausalNet object
-    occn = ocpn_converter.apply(
-        ocpn, variant=ocpn_converter.Variants.TO_OC_CAUSAL_NET
-    )
+    occn = ocpn_converter.apply(ocpn, variant=ocpn_converter.Variants.TO_OC_CAUSAL_NET)
 
     # Save Visualization
     visualizer(
@@ -1218,6 +1216,13 @@ def _prepare_converted_ocpn_for_viz(ocpn, occn, precomputed):
     places = [
         place for place in places.values() if place.name != "p_binding_global_input"
     ] + list(binding_places.values())
+    
+    # give labels to silent transitions to allow for proper visualization
+    i = 0
+    for transition in transitions.values():
+        if transition.label is None:
+            transition.label = f"tau_{i}"
+            i += 1
 
     return OCPetriNet(
         name=ocpn.name,
