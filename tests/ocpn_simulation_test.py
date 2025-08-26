@@ -35,7 +35,7 @@ class OCPNSimulationTest(unittest.TestCase):
         )
         final_marking = OCMarking({places["o2"]: {"order1"}, places["o4"]: {"order1"}})
 
-        (traces, _) = playout_ocpn_extensive(
+        (traces, _, _) = playout_ocpn_extensive(
             ocpn, initial_marking, final_marking, parameters=params
         )
         self.assertEqual(len(traces), 1)
@@ -45,7 +45,7 @@ class OCPNSimulationTest(unittest.TestCase):
         )
         final_marking = OCMarking({places["o2"]: {"order1"}, places["o4"]: {"order1"}})
 
-        (traces, _) = playout_ocpn_extensive(
+        (traces, _, _) = playout_ocpn_extensive(
             ocpn, initial_marking, final_marking, parameters=params
         )
         self.assertEqual(len(traces), 0)
@@ -63,7 +63,7 @@ class OCPNSimulationTest(unittest.TestCase):
         initial_marking = OCMarking({places["o1"]: {"order1"}, places["i1"]: {"item1"}})
         final_marking = OCMarking({places["o5"]: {"order1"}, places["i5"]: {"item1"}})
 
-        (traces, _) = playout_ocpn_extensive(
+        (traces, _, _) = playout_ocpn_extensive(
             ocpn, initial_marking, final_marking, parameters=params
         )
         self.assertEqual(len(traces), 52)
