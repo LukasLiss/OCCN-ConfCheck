@@ -81,7 +81,7 @@ Here, all duplicated global binding places are labeled *b*. These all refer to t
 
 **ContainerLogistics**
 
-![ContainerLogistics - Transformed OCPN](assets/Converted_OCPNs/ContainerLogistics.png)
+![ContainerLogistics - Transformed OCPN](assets/Converted_OCPNs/ContainerLogistics.svg)
 
 *Objects for play-out:*
 
@@ -96,7 +96,7 @@ Here, all duplicated global binding places are labeled *b*. These all refer to t
 
 **P2P**
 
-![P2P - Transformed OCPN](assets/Converted_OCPNs/P2P.png)
+![P2P - Transformed OCPN](assets/Converted_OCPNs/P2P.svg)
 
 *Objects for play-out:*
 
