@@ -165,6 +165,28 @@ To set up your environment and run the code, please follow these steps:
 
 As a starting point, you may run the evaluation by invoking `python evaluation/run_evaluation` from the root directory.
 
+## Usage
+To convert an OCPN to its corresponding OCCN, discover an OCPN from an OCEL, convert the resulting dictionary representation to an OCPetriNet object, and conduct the conversion:
+```python
+from pm4py.objects.ocpn import factory as ocpn_factory
+from pm4py.objects.ocpn import converter as ocpn_converter
+
+ocel = pm4py.read_ocel2(os.path.join("evaluation", "event_logs", ocel_name))
+ocpn_dict = pm4py.discover_oc_petri_net(ocel)
+ocpn = ocpn_factory.create(ocpn_dict)
+
+occn = ocpn_converter.apply(ocpn, variant=ocpn_converter.Variants.TO_OC_CAUSAL_NET)
+```
+
+To convert an OCCN to its corresponding OCPN, discover or manually create an OCCN, and conduct the conversion:
+```python
+from pm4py.objects.oc_causal_net import converter as occn_converter
+
+occn = ... # see evaluation/container_logistics_occn.py for an example
+ocpn = occn_converter.apply(occn, variant=occn_converter.Variants.TO_OCPN)
+```
+
+
 ## Reference
 
 [1] Kuhlmann, O. (2025). *A Transformation between Object-Centric Causal Nets and Object-Centric Petri Nets*. **Unpublished** bachelor's thesis, RWTH Aachen University, Aachen, Germany (expected 10/2025).
