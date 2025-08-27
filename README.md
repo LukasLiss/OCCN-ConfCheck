@@ -112,15 +112,15 @@ The table below summarizes the replayability results, where `n` is the number of
 
 | Dataset              | OCPN → OCCN (Play-out OCPN, Replay OCCN) | OCPN → OCCN (Play-out OCCN, Replay OCPN) | OCCN → OCPN (Play-out OCCN, Replay OCPN) | OCCN → OCPN (Play-out OCPN, Replay OCCN) |
 | -------------------- | :-------------------------------------------: | :-------------------------------------------: | :-------------------------------------------: | :-------------------------------------------: |
-| **Running Example** |                100%, `n=4,100k`                 |               100%, `n=4,000k`               |                 100%, `n=76k`                 |                20%, `n=1,500k`                |
-| **ContainerLogistics** |               100%, `n=2,600k`                |                100%, `n=700k`                 |                 100%, `n=76k`                 |                 9%, `n=4,900k`                |
+| **Running Example** |                100%, `n=4,100k`                 |               100%, `n=4,000k`               |                 100%, `n=76k`                 |                1.1%, `n=2,300k`                |
+| **ContainerLogistics** |               100%, `n=2,600k`                |                100%, `n=700k`                 |                 100%, `n=76k`                 |                 10.5%, `n=4,300k`                |
 | **Procure-to-Pay** |               100%, `n=3,600k`                |               100%, `n=3,500k`                |                100%, `n=130k`                 |               100%, `n=4,200k`                |
 
 These results empirically confirm the theoretical properties of the transformations:
 
   * The **100% replayability** in the first two columns supports the claim of **language equivalence** for the OCPN-to-OCCN transformation.
   * The **100% replayability** in the third column shows that all behavior from the source OCCN is preserved in the transformed OCPN.
-  * The **\<100% replayability** in the fourth column demonstrates the **underfitting** property: the transformed OCPN allows for more behavior than the original OCCN.
+  * The **\<100% replayability** in the fourth column demonstrates the **underfitting** property: the transformed OCPN allows for more behavior than the original OCCN. The 100% replayability for the P2P dataset presents an edge case in which the transformed OCPN is behaviorally equivalent to the OCCN.
 
 For a detailed analysis of these results, please see the thesis [1].
 
