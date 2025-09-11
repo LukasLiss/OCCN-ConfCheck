@@ -22,4 +22,4 @@ Contact: info@processintelligence.solutions
 from pm4py.util import constants as pm4_constants
 
 if pm4_constants.ENABLE_INTERNAL_IMPORTS:
-    from pm4py.objects.ocpn import *
+    from pm4py.objects.ocpn import obj, converter, factory, semantics, utils

@@ -22,10 +22,9 @@ Contact: info@processintelligence.solutions
 
 from typing import Set
 
-from pm4py.objects.oc_causal_net.obj import OCCausalNet
 
 
-def pre_set(occn: OCCausalNet, activity: str, object_type: str = None) -> Set:
+def pre_set(occn, activity: str, object_type: str = None) -> Set:
     """
     Returns the set of predecessor activities for a given activity in an object-centric causal net.
     Restricted to predecessors connected using arcs of the specified object type, if provided.
@@ -58,7 +57,7 @@ def pre_set(occn: OCCausalNet, activity: str, object_type: str = None) -> Set:
         if edge_key == object_type
     }
 
-def post_set(occn: OCCausalNet, activity: str, object_type: str = None) -> Set:
+def post_set(occn, activity: str, object_type: str = None) -> Set:
     """
     Returns the set of successor activities for a given activity in an object-centric causal net.
     Restricted to successors connected using arcs of the specified object type, if provided.

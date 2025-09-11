@@ -19,4 +19,4 @@ visit <https://www.gnu.org/licenses/>.
 Website: https://processintelligence.solutions
 Contact: info@processintelligence.solutions
 '''
-from pm4py.objects.ocpn.variants import to_oc_causal_net
+from pm4py.objects.ocpn.variants import to_oc_causal_net, to_alternative_format

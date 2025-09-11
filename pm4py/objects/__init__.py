@@ -23,7 +23,7 @@ from pm4py.util import constants as pm4_constants
 
 if pm4_constants.ENABLE_INTERNAL_IMPORTS:
     from pm4py.objects import log, petri_net, transition_system, conversion, process_tree, \
-        dfg, trie, org
+        dfg, trie, org, ocpn, oc_causal_net
     import importlib.util
 
     if importlib.util.find_spec("networkx"):

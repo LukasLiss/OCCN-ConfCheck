@@ -19,4 +19,4 @@ visit <https://www.gnu.org/licenses/>.
 Website: https://processintelligence.solutions
 Contact: info@processintelligence.solutions
 '''
-from pm4py.algo.simulation.playout import dfg, petri_net, process_tree
+from pm4py.algo.simulation.playout import dfg, petri_net, process_tree, oc_causal_net, ocpn
