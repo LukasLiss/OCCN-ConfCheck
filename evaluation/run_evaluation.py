@@ -1216,7 +1216,7 @@ def _prepare_converted_ocpn_for_viz(ocpn, occn, precomputed):
     places = [
         place for place in places.values() if place.name != "p_binding_global_input"
     ] + list(binding_places.values())
-    
+
     # give labels to silent transitions to allow for proper visualization
     i = 0
     for transition in transitions.values():

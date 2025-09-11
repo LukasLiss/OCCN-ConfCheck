@@ -938,24 +938,6 @@ def transform_output_key_group(
             add_arc(
                 OCPetriNet.Arc(
                     source=p_input_binding,
-                    target=t1,
-                    object_type=BINDING_OBJECT_TYPE,
-                    is_variable=False,
-                ),
-                arcs,
-            )
-            add_arc(
-                OCPetriNet.Arc(
-                    source=t1,
-                    target=p_alpha,
-                    object_type=BINDING_OBJECT_TYPE,
-                    is_variable=False,
-                ),
-                arcs,
-            )
-            add_arc(
-                OCPetriNet.Arc(
-                    source=p_alpha,
                     target=t2,
                     object_type=BINDING_OBJECT_TYPE,
                     is_variable=False,
@@ -965,6 +947,24 @@ def transform_output_key_group(
             add_arc(
                 OCPetriNet.Arc(
                     source=t2,
+                    target=p_alpha,
+                    object_type=BINDING_OBJECT_TYPE,
+                    is_variable=False,
+                ),
+                arcs,
+            )
+            add_arc(
+                OCPetriNet.Arc(
+                    source=p_alpha,
+                    target=t1,
+                    object_type=BINDING_OBJECT_TYPE,
+                    is_variable=False,
+                ),
+                arcs,
+            )
+            add_arc(
+                OCPetriNet.Arc(
+                    source=t1,
                     target=p_beta,
                     object_type=BINDING_OBJECT_TYPE,
                     is_variable=False,
@@ -1343,24 +1343,6 @@ def transform_marker(
             add_arc(
                 OCPetriNet.Arc(
                     source=p_input_binding,
-                    target=t1,
-                    object_type=BINDING_OBJECT_TYPE,
-                    is_variable=False,
-                ),
-                arcs,
-            )
-            add_arc(
-                OCPetriNet.Arc(
-                    source=t1,
-                    target=px,
-                    object_type=BINDING_OBJECT_TYPE,
-                    is_variable=False,
-                ),
-                arcs,
-            )
-            add_arc(
-                OCPetriNet.Arc(
-                    source=px,
                     target=t2,
                     object_type=BINDING_OBJECT_TYPE,
                     is_variable=False,
@@ -1370,6 +1352,24 @@ def transform_marker(
             add_arc(
                 OCPetriNet.Arc(
                     source=t2,
+                    target=px,
+                    object_type=BINDING_OBJECT_TYPE,
+                    is_variable=False,
+                ),
+                arcs,
+            )
+            add_arc(
+                OCPetriNet.Arc(
+                    source=px,
+                    target=t1,
+                    object_type=BINDING_OBJECT_TYPE,
+                    is_variable=False,
+                ),
+                arcs,
+            )
+            add_arc(
+                OCPetriNet.Arc(
+                    source=t1,
                     target=p_output_binding,
                     object_type=BINDING_OBJECT_TYPE,
                     is_variable=False,
