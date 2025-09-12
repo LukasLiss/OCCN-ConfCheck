@@ -134,9 +134,10 @@ def eval_ocpn(ocel_name, variant_params):
     occn = ocpn_converter.apply(ocpn, variant=ocpn_converter.Variants.TO_OC_CAUSAL_NET)
 
     # Save Visualization
-    visualizer(
-        SimpleOCCNet.create_from_OCCausalNet(occn), "evaluation/occn_visualization/"
-    )
+    if os.path.exists("evaluation/occn_visualization/src/"):
+        visualizer(
+            SimpleOCCNet.create_from_OCCausalNet(occn), "evaluation/occn_visualization"
+        )
 
     # Variant 1: Playout OCPN and replay on converted OCCN
     if "playout_ocpn_replay_on_converted_occn" in variant_params:
@@ -274,9 +275,10 @@ def discover_occn(ocel_name):
         raise ValueError(f"Unknown OCCN for OCEL name: {ocel_name}")
 
     # save viz
-    visualizer(
-        SimpleOCCNet.create_from_OCCausalNet(occn), "evaluation/occn_visualization/"
-    )
+    if os.path.exists("evaluation/occn_visualization/src/"):
+        visualizer(
+            SimpleOCCNet.create_from_OCCausalNet(occn), "evaluation/occn_visualization"
+        )
 
     return occn
 
