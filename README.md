@@ -112,7 +112,7 @@ The table below summarizes the replayability results, where `n` is the number of
 
 | Dataset              | OCPN → OCCN (Play-out OCPN, Replay OCCN) | OCPN → OCCN (Play-out OCCN, Replay OCPN) | OCCN → OCPN (Play-out OCCN, Replay OCPN) | OCCN → OCPN (Play-out OCPN, Replay OCCN) |
 | -------------------- | :-------------------------------------------: | :-------------------------------------------: | :-------------------------------------------: | :-------------------------------------------: |
-| **Running Example** |                100%, `n=4,100k`                 |               100%, `n=4,000k`               |                 100%, `n=76k`                 |                1.1%, `n=2,300k`                |
+| **Running Example** |                100%, `n=4,100k`                 |               100%, `n=4,000k`               |                 100%, `n=76k`                 |                1.5%, `n=2,400k`                |
 | **ContainerLogistics** |               100%, `n=2,600k`                |                100%, `n=700k`                 |                 100%, `n=76k`                 |                 10.5%, `n=4,300k`                |
 | **Procure-to-Pay** |               100%, `n=3,600k`                |               100%, `n=3,500k`                |                100%, `n=130k`                 |               100%, `n=4,200k`                |
 
