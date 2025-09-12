@@ -53,12 +53,66 @@ def evaluation():
     # respective configurations.
     evaluation_plan = [
         {
+            "ocel_name": "ContainerLogistics.json",
+            "variants_to_run": {
+                "playout_ocpn_replay_on_converted_occn": {
+                    "config_id": 0,
+                    "time_budget": 14 * 60 * 60,
+                },
+                "playout_converted_occn_replay_on_ocpn": {
+                    "config_id": 0,
+                    "time_budget": 14 * 60 * 60,
+                },
+                "playout_occn_replay_on_converted_ocpn": {
+                    "config_id": 4,
+                    "time_budget": 10 * 60 * 60,
+                },
+                "playout_ocpn_replay_on_original_occn": {
+                    "config_id": 2, 
+                    "time_budget": 10 * 60 * 60,
+                },
+            },
+        },
+        {
             "ocel_name": "ocel2-p2p.json",
             "variants_to_run": {
+                "playout_ocpn_replay_on_converted_occn": {
+                    "config_id": 0,
+                    "time_budget": 14 * 60 * 60,
+                },
+                "playout_converted_occn_replay_on_ocpn": {
+                    "config_id": 0,
+                    "time_budget": 14 * 60 * 60,
+                },
+                "playout_occn_replay_on_converted_ocpn": {
+                    "config_id": 0,
+                    "time_budget": 14 * 60 * 60,
+                },
                 "playout_ocpn_replay_on_original_occn": {
                     "config_id": 0,
-                    "time_budget": 24 * 60 * 60,
-                }
+                    "time_budget": 14 * 60 * 60,
+                },
+            },
+        },
+        {
+            "ocel_name": "running_ex",
+            "variants_to_run": {
+                "playout_ocpn_replay_on_converted_occn": {
+                    "config_id": 0,
+                    "time_budget": 14 * 60 * 60,
+                },
+                "playout_converted_occn_replay_on_ocpn": {
+                    "config_id": 0,
+                    "time_budget": 14 * 60 * 60,
+                },
+                "playout_occn_replay_on_converted_ocpn": {
+                    "config_id": 3,
+                    "time_budget": 14 * 60 * 60,
+                },
+                "playout_ocpn_replay_on_original_occn": {
+                    "config_id": 3,
+                    "time_budget": 14 * 60 * 60,
+                },
             },
         },
     ]
