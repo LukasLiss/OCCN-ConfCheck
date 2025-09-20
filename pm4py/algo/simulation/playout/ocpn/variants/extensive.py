@@ -71,7 +71,7 @@ def apply(
         Final marking of the object-centric Petri net
     parameters
         Parameters of the algorithm:
-            Parameters.MAX_BINDINGS_PER_ACTIVITY -> Maximum bindings per activity
+            Parameters.MAX_BINDINGS_PER_ACTIVITY -> Maximum bindings per activity (mandatory)
             Parameters.EXISTS_TRACE -> If True, return a boolean indicating if at least one trace exists instead of an OCEL
             Parameters.RETURN_TRACES -> If True, return traces instead of OCEL
             Parameters.BRANCHING_FACTOR_TRANSITIONS -> Maximum number of transitions to explore from a single
@@ -91,8 +91,12 @@ def apply(
     exists_trace = exec_utils.get_param_value(
         Parameters.EXISTS_TRACE, parameters, False
     )
+    if Parameters.MAX_BINDINGS_PER_ACTIVITY not in parameters:
+        raise ValueError(
+            "Parameter MAX_BINDINGS_PER_ACTIVITY must be specified for the extensive playout. This parameter limits the maximum number of times an activity may be executed."
+        )
     max_bindings_per_activity = exec_utils.get_param_value(
-        Parameters.MAX_BINDINGS_PER_ACTIVITY, parameters, sys.maxsize
+        Parameters.MAX_BINDINGS_PER_ACTIVITY, parameters, None
     )
     # How many enabled transitions to explore from a single state
     # deactivated by default

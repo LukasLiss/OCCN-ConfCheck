@@ -74,7 +74,7 @@ def apply(
         Dictionary mapping object types to sets of object ids. These objects will be introduced by the start activities of the occn at the beginning of every binding sequence.
     parameters
         Parameters of the algorithm, including:
-            Parameters.MAX_BINDINGS_PER_ACTIVITY: Maximum number of bindings per activity (default: 3)
+            Parameters.MAX_BINDINGS_PER_ACTIVITY: Maximum number of bindings per activity (mandatory)
             Parameters.RETURN_SEQUENCES: If True, return an iterator to all possible sequences of bindings instead of an OCEL
             Parameters.OCCN_SEMANTICS: The semantics to be used for the causal net (default: OCCausalNetSemantics())
             Parameters.BRANCHING_FACTOR_ACTIVITIES: Maximum branching factor for exploring enabled activities (default: inf). Note that the play-out will generate a subset of all sequences if this is set.
@@ -86,8 +86,12 @@ def apply(
     return_sequences = exec_utils.get_param_value(
         Parameters.RETURN_SEQUENCES, parameters, False
     )
+    if Parameters.MAX_BINDINGS_PER_ACTIVITY not in parameters:
+        raise ValueError(
+            "Parameter MAX_BINDINGS_PER_ACTIVITY must be specified for the extensive playout. This parameter limits the maximum number of times an activity may be executed."
+        )
     max_bindings_per_activity = exec_utils.get_param_value(
-        Parameters.MAX_BINDINGS_PER_ACTIVITY, parameters, 3
+        Parameters.MAX_BINDINGS_PER_ACTIVITY, parameters, None
     )
     semantics = exec_utils.get_param_value(
         Parameters.OCCN_SEMANTICS,
