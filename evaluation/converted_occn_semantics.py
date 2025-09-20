@@ -64,10 +64,20 @@ class ConvertedOCCausalNetSemantics(OCCausalNetSemantics[N]):
             # pred places of transition
             pred_places = {
                 ot: pre_set(occn, transition_name, ot) for ot in objects.keys()
-            }
+            }         
 
-            # 1: bind the predecessor places
+            # 1: bind the predecessor places (or the auxiliary activity)
             for ot in objects.keys():
+                # check if the pred is an aux activity
+                is_aux = False
+                preds = list(pred_places[ot])
+                if len(preds) == 1 and preds[0].startswith("_silent_aux_"):
+                    is_aux = True
+                    aux = preds[0]
+                    # replace pred_places with the predecessors of the aux activity (restored later)
+                    pred_places[ot] = pre_set(occn, aux, ot)
+                    
+                # bind all predecessor places
                 for pred_place in pred_places[ot]:
                     cons = cls._get_outstanding_obligations(
                         pred_place, objects[ot], ot, state
@@ -78,7 +88,7 @@ class ConvertedOCCausalNetSemantics(OCCausalNetSemantics[N]):
                         pred_pred_objects = cons[pred_pred_place][ot]
 
                         sub_cons = {pred_pred_place: {ot: pred_pred_objects}}
-                        prod = {transition_name: {ot: pred_pred_objects}}
+                        prod = {transition_name: {ot: pred_pred_objects}} if not is_aux else {aux: {ot: pred_pred_objects}}
 
                         if not OCCausalNetSemantics.is_binding_enabled(
                             occn, pred_place, sub_cons, prod, state
@@ -88,6 +98,28 @@ class ConvertedOCCausalNetSemantics(OCCausalNetSemantics[N]):
                         state = OCCausalNetSemantics.bind_activity(
                             occn, pred_place, sub_cons, prod, state
                         )
+                
+                # bind the aux activity with all objects
+                if is_aux:
+                    for obj_id in objects[ot]:
+                        cons = {
+                            aux_pred: {ot: {obj_id}}
+                            for aux_pred in pre_set(occn, aux, ot)
+                        }
+                        prod = {
+                            transition_name: {ot: {obj_id}}
+                        }
+                        if not OCCausalNetSemantics.is_binding_enabled(
+                            occn, aux, cons, prod, state
+                        ):
+                            return False
+                        # bind the auxiliary activity
+                        state = OCCausalNetSemantics.bind_activity(
+                            occn, aux, cons, prod, state
+                        )
+                    # restore pred_places
+                    pred_places[ot] = {aux}
+                    
 
             # 2: bind the transition
             cons = {
