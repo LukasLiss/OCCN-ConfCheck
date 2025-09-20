@@ -23,10 +23,11 @@ Contact: info@processintelligence.solutions
 from pm4py.objects.oc_causal_net.obj import OCCausalNet
 from pm4py.objects.ocpn.obj import OCPetriNet
 import networkx as nx
-import copy
 
 
 AUX_ACTIVITY_PREFIX = "_silent_aux_"
+POST_AUX_ACTIVITY_PREFIX = AUX_ACTIVITY_PREFIX + "out_"
+PRE_AUX_ACTIVITY_PREFIX = AUX_ACTIVITY_PREFIX + "in_"
 
 
 def apply(ocpn: OCPetriNet, parameters=None) -> OCCausalNet:
@@ -60,13 +61,13 @@ def apply(ocpn: OCPetriNet, parameters=None) -> OCCausalNet:
     input_marker_groups = dict()
     output_marker_groups = dict()
 
-    # get multi-variant object types per transition
-    multi_variant_ots = get_multi_variant_object_types(ocpn)
+    # get multi-object types per transition
+    multi_ots = get_multi_object_types(ocpn)
 
     # create dependencies and marker groups for transitions
     transition_dependencies_marker_groups(
         transitions,
-        multi_variant_ots,
+        multi_ots,
         dependencies,
         input_marker_groups,
         output_marker_groups,
@@ -75,7 +76,7 @@ def apply(ocpn: OCPetriNet, parameters=None) -> OCCausalNet:
     # create dependencies and marker groups for places
     place_dependencies_marker_groups(
         places,
-        multi_variant_ots,
+        multi_ots,
         dependencies,
         input_marker_groups,
         output_marker_groups,
@@ -120,10 +121,13 @@ def apply(ocpn: OCPetriNet, parameters=None) -> OCCausalNet:
     return occn
 
 
-def get_multi_variant_object_types(ocpn: OCPetriNet) -> dict:
+def get_multi_object_types(ocpn: OCPetriNet) -> dict:
     """
-    Returns a dictionary of transition names with their multi-variant object types.
-    A multi-variant object type is one that has at least two outgoing variable arcs from the transition.
+    Returns a dictionary mapping transition names to two dictionaries of multi-input/multi-output
+    object types
+    mapping object types to True if they are variable and False otherwise.
+    A multi-input/output object type is one that has at least two incoming/outgoing arcs
+    to/from the transition.
 
     Parameters
     ----------
@@ -132,22 +136,32 @@ def get_multi_variant_object_types(ocpn: OCPetriNet) -> dict:
 
     Returns
     -------
-    dict: Dictionary with transition names as keys and sets of multi-variant object types as values.
+    dict: Dictionary with transition names as keys a dictionary mapping "input" and "output"
+          to dictionaries of multi-input/multi-output object types to True/False.
     """
-    multi_variant_ots = {}
+    multi_ots = {}
     for t in ocpn.transitions:
-        variant_object_types = [
-            arc.object_type for arc in t.out_arcs if arc.is_variable
-        ]
-        for ot in set(variant_object_types):
-            if variant_object_types.count(ot) > 1:
-                if t.name not in multi_variant_ots:
-                    multi_variant_ots[t.name] = set()
-                multi_variant_ots[t.name].add(ot)
-    return multi_variant_ots
+        multi_ots[t.name] = {"input": dict(), "output": dict()}
+        in_ots = [arc.object_type for arc in t.in_arcs]
+        multi_ots[t.name]["output"] = dict()
+        out_ots = [arc.object_type for arc in t.out_arcs]
+
+        for ot in set(in_ots):
+            if in_ots.count(ot) > 1:
+                multi_ots[t.name]["input"][ot] = any(
+                    arc.is_variable for arc in t.in_arcs if arc.object_type == ot
+                )
+
+        for ot in set(out_ots):
+            if out_ots.count(ot) > 1:
+                multi_ots[t.name]["output"][ot] = any(
+                    arc.is_variable for arc in t.out_arcs if arc.object_type == ot
+                )
+
+    return multi_ots
 
 
-def get_aux_place_name(transition_name, object_type):
+def get_aux_place_name(transition_name, object_type, is_input_aux):
     """
     Returns the name of the auxiliary place for a given transition and object type.
 
@@ -157,17 +171,20 @@ def get_aux_place_name(transition_name, object_type):
         The name of the transition.
     object_type: str
         The object type associated with the auxiliary place.
+    is_input_aux: bool
+        Whether the auxiliary place is an input auxiliary place (True) or output auxiliary place (False).
 
     Returns
     -------
     str: The name of the auxiliary place.
     """
-    return f"{AUX_ACTIVITY_PREFIX}{transition_name}_{object_type}"
+    prefix = PRE_AUX_ACTIVITY_PREFIX if is_input_aux else POST_AUX_ACTIVITY_PREFIX
+    return f"{prefix}{transition_name}_{object_type}"
 
 
 def transition_dependencies_marker_groups(
     transitions,
-    multi_variant_ots,
+    multi_ots,
     dependencies,
     input_marker_groups,
     output_marker_groups,
@@ -181,8 +198,8 @@ def transition_dependencies_marker_groups(
     ----------
     transitions: list
         List of transitions in the Object-centric Petri Net.
-    multi_variant_ots: dict
-        Dictionary mapping transition names to sets of multi-variant object types.
+    multi_ots: dict
+        Dictionary mapping transition names to multi-object types.
     dependencies: dict
         Dictionary to store dependencies between activities.
     input_marker_groups: dict
@@ -194,25 +211,47 @@ def transition_dependencies_marker_groups(
         # dependencies
         dependencies[t.name] = dict()  # add as activity
 
-        # get multi-variant object types for this transition
-        multi_variants = multi_variant_ots.get(t.name, set())
+        # get multi object types for this transition
+        multi_input = multi_ots.get(t.name, dict()).get("input", dict())
+        multi_output = multi_ots.get(t.name, dict()).get("output", dict())
 
         for arc in t.in_arcs:
-            add_dependency(dependencies, arc.source, t, arc.object_type)
+            if arc.object_type in multi_input:
+                # aux. place goes in between source place and transition
+                aux_place_name = get_aux_place_name(
+                    t.name, arc.object_type, is_input_aux=True
+                )
+                add_dependency(
+                    dependencies, arc.source, aux_place_name, arc.object_type
+                )
+                add_dependency(dependencies, aux_place_name, t, arc.object_type)
+            else:
+                add_dependency(dependencies, arc.source, t, arc.object_type)
         for arc in t.out_arcs:
-            if arc.object_type in multi_variants:
-                if not arc.is_variable:
-                    raise ValueError(
-                        f"The given OCPN is not well-formed: Transition {t} has both non-variable and variable outgoing arcs for object type {arc.object_type}."
-                    )
+            if arc.object_type in multi_output:
                 # aux. place goes in between transition and target place
-                aux_place_name = get_aux_place_name(t.name, arc.object_type)
+                aux_place_name = get_aux_place_name(
+                    t.name, arc.object_type, is_input_aux=False
+                )
                 add_dependency(dependencies, t, aux_place_name, arc.object_type)
                 add_dependency(
                     dependencies, aux_place_name, arc.target, arc.object_type
                 )
             else:
                 add_dependency(dependencies, t, arc.target, arc.object_type)
+
+        # markers from input aux activities
+        input_aux_markers = [
+            OCCausalNet.Marker(
+                related_activity=(
+                    get_aux_place_name(t.name, object_type, is_input_aux=True)
+                ),
+                object_type=object_type,
+                count_range=(0, float("inf")) if multi_input[object_type] else (1, 1),
+                marker_key=get_next_key(),
+            )
+            for object_type in multi_input
+        ]
 
         # single input marker group
         input_marker_groups[t.name] = [
@@ -225,21 +264,23 @@ def transition_dependencies_marker_groups(
                         marker_key=get_next_key(),
                     )
                     for arc in t.in_arcs
+                    if arc.object_type not in multi_input
                 ]
+                + input_aux_markers
             )
         ]
 
-        # markers to aux activities
-        aux_markers = [
+        # markers to output aux activities
+        output_aux_markers = [
             OCCausalNet.Marker(
                 related_activity=(
-                    get_aux_place_name(t.name, object_type)
+                    get_aux_place_name(t.name, object_type, is_input_aux=False)
                 ),
                 object_type=object_type,
-                count_range=(0, float("inf")),
+                count_range=(0, float("inf")) if multi_output[object_type] else (1, 1),
                 marker_key=get_next_key(),
             )
-            for object_type in multi_variants
+            for object_type in multi_output
         ]
 
         # single output marker group
@@ -247,22 +288,53 @@ def transition_dependencies_marker_groups(
             OCCausalNet.MarkerGroup(
                 [
                     OCCausalNet.Marker(
-                        related_activity=(
-                            arc.target.name
-                        ),
+                        related_activity=(arc.target.name),
                         object_type=arc.object_type,
                         count_range=(0, float("inf")) if arc.is_variable else (1, 1),
                         marker_key=get_next_key(),
                     )
                     for arc in t.out_arcs
-                    if arc.object_type not in multi_variants
-                ] + aux_markers
+                    if arc.object_type not in multi_output
+                ]
+                + output_aux_markers
             )
         ]
 
-        # add marker groups for auxiliary places
-        for ot in multi_variants:
-            aux_place_name = get_aux_place_name(t.name, ot)
+        # add marker groups for input auxiliary places
+        for ot in multi_input:
+            aux_place_name = get_aux_place_name(t.name, ot, is_input_aux=True)
+            output_marker_groups[aux_place_name] = [
+                # single marker group with one marker for the transition
+                OCCausalNet.MarkerGroup(
+                    [
+                        OCCausalNet.Marker(
+                            related_activity=t.name,
+                            object_type=ot,
+                            count_range=(1, 1),
+                            marker_key=get_next_key(),
+                        )
+                    ]
+                )
+            ]
+            input_marker_groups[aux_place_name] = [
+                # marker for every predecessor of t with this object type
+                OCCausalNet.MarkerGroup(
+                    [
+                        OCCausalNet.Marker(
+                            related_activity=arc.source.name,
+                            object_type=ot,
+                            count_range=(1, 1),
+                            marker_key=get_next_key(),
+                        )
+                        for arc in t.in_arcs
+                        if arc.object_type == ot
+                    ]
+                )
+            ]
+
+        # add marker groups for output auxiliary places
+        for ot in multi_output:
+            aux_place_name = get_aux_place_name(t.name, ot, is_input_aux=False)
             input_marker_groups[aux_place_name] = [
                 # single marker group with one marker for the transition
                 OCCausalNet.MarkerGroup(
@@ -294,7 +366,7 @@ def transition_dependencies_marker_groups(
 
 
 def place_dependencies_marker_groups(
-    places, multi_variant_ots, dependencies, input_marker_groups, output_marker_groups
+    places, multi_ots, dependencies, input_marker_groups, output_marker_groups
 ):
     """
     Creates dependencies and marker groups for places in the Object-centric Petri Net.
@@ -305,8 +377,8 @@ def place_dependencies_marker_groups(
     ----------
     places: list
         List of places in the Object-centric Petri Net.
-    multi_variant_ots: dict
-        Dictionary mapping transition names to sets of multi-variant object types.
+    multi_ots: dict
+        Dictionary mapping transition names to multi-object types.
     dependencies: dict
         Dictionary to store dependencies between activities.
     input_marker_groups: dict
@@ -318,23 +390,39 @@ def place_dependencies_marker_groups(
     def is_predecessor_transition_with_multi_variant(arc):
         """
         Checks if the source of the arc is a transition with and the object type
-        of the arc is a multi-variant object type for the given transition.
+        of the arc is a multi-output object type for the given transition.
         """
         return isinstance(
             arc.source, OCPetriNet.Transition
-        ) and arc.object_type in multi_variant_ots.get(arc.source.name, set())
+        ) and arc.object_type in multi_ots.get(arc.source.name, dict()).get(
+            "output", dict()
+        )
+
+    def is_successor_transition_with_multi_variant(arc):
+        """
+        Checks if the target of the arc is a transition with and the object type
+        of the arc is a multi-input object type for the given transition.
+        """
+        return isinstance(
+            arc.target, OCPetriNet.Transition
+        ) and arc.object_type in multi_ots.get(arc.target.name, dict()).get(
+            "input", dict()
+        )
 
     for p in places:
-
         # dependencies
-        dependencies[p.name] = dict()  # add as activity
+        if p.name not in dependencies:
+            dependencies[p.name] = dict()  # add as activity
         for arc in p.in_arcs:
             if not is_predecessor_transition_with_multi_variant(arc):
                 add_dependency(dependencies, arc.source, p, arc.object_type)
             else:
                 pass  # dependency for auxiliary places was already added
         for arc in p.out_arcs:
-            add_dependency(dependencies, p, arc.target, arc.object_type)
+            if not is_successor_transition_with_multi_variant(arc):
+                add_dependency(dependencies, p, arc.target, arc.object_type)
+            else:
+                pass  # dependency for auxiliary places was already added
 
         # one-element marker group per arc
         input_marker_groups[p.name] = [
@@ -344,7 +432,9 @@ def place_dependencies_marker_groups(
                         related_activity=(
                             arc.source.name
                             if not is_predecessor_transition_with_multi_variant(arc)
-                            else get_aux_place_name(arc.source.name, arc.object_type)
+                            else get_aux_place_name(
+                                arc.source.name, arc.object_type, is_input_aux=False
+                            )
                         ),  # connect to aux place instead if multi-variant ot
                         object_type=arc.object_type,
                         count_range=(1, float("inf")),
@@ -359,7 +449,13 @@ def place_dependencies_marker_groups(
             OCCausalNet.MarkerGroup(
                 [
                     OCCausalNet.Marker(
-                        related_activity=arc.target.name,
+                        related_activity=(
+                            arc.target.name
+                            if not is_successor_transition_with_multi_variant(arc)
+                            else get_aux_place_name(
+                                arc.target.name, arc.object_type, is_input_aux=True
+                            )
+                        ),
                         object_type=arc.object_type,
                         count_range=(1, float("inf")),
                         marker_key=get_next_key(),

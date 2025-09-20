@@ -278,7 +278,7 @@ class OCPN_Test(unittest.TestCase):
                 ],
                 "omg": [
                     [
-                        ("a", "order", (1, -1), 0),
+                        ("_silent_aux_in_a_order", "order", (1, -1), 0),
                     ],
                 ],
             },
@@ -288,27 +288,41 @@ class OCPN_Test(unittest.TestCase):
                 ],
                 "omg": [
                     [
-                        ("a", "order", (1, -1), 0),
+                        ("_silent_aux_in_a_order", "order", (1, -1), 0),
+                    ],
+                ],
+            },
+            "_silent_aux_in_a_order": {
+                "img": [
+                    [("o1", "order", (1, 1), 0), ("o3", "order", (1, 1), 0)],
+                ],
+                "omg": [
+                    [
+                        ("a", "order", (1, 1), 0),
                     ],
                 ],
             },
             "a": {
                 "img": [
                     [
-                        ("o1", "order", (1, 1), 0),
-                        ("o3", "order", (1, 1), 0),
+                        ("_silent_aux_in_a_order", "order", (1, 1), 0),
                     ],
                 ],
                 "omg": [
                     [
-                        ("o2", "order", (1, 1), 0),
-                        ("o4", "order", (1, 1), 0),
+                        ("_silent_aux_out_a_order", "order", (1, 1), 0),
                     ],
+                ],
+            },
+            "_silent_aux_out_a_order": {
+                "img": [[("a", "order", (1, 1), 0)]],
+                "omg": [
+                    [("o2", "order", (1, 1), 0), ("o4", "order", (1, 1), 0)],
                 ],
             },
             "o2": {
                 "img": [
-                    [("a", "order", (1, -1), 0)],
+                    [("_silent_aux_out_a_order", "order", (1, -1), 0)],
                 ],
                 "omg": [
                     [
@@ -318,7 +332,7 @@ class OCPN_Test(unittest.TestCase):
             },
             "o4": {
                 "img": [
-                    [("a", "order", (1, -1), 0)],
+                    [("_silent_aux_out_a_order", "order", (1, -1), 0)],
                 ],
                 "omg": [
                     [
@@ -493,11 +507,11 @@ class OCPN_Test(unittest.TestCase):
                 ],
                 "omg": [
                     [
-                        ("_silent_aux_a_order", "order", (0, -1), 0),
+                        ("_silent_aux_out_a_order", "order", (0, -1), 0),
                     ],
                 ],
             },
-            "_silent_aux_a_order": {
+            "_silent_aux_out_a_order": {
                 "img": [
                     [("a", "order", (1, 1), 0)],
                 ],
@@ -510,7 +524,7 @@ class OCPN_Test(unittest.TestCase):
             },
             "p2": {
                 "img": [
-                    [("_silent_aux_a_order", "order", (1, -1), 0)],
+                    [("_silent_aux_out_a_order", "order", (1, -1), 0)],
                 ],
                 "omg": [
                     [
@@ -520,7 +534,7 @@ class OCPN_Test(unittest.TestCase):
             },
             "p3": {
                 "img": [
-                    [("_silent_aux_a_order", "order", (1, -1), 0)],
+                    [("_silent_aux_out_a_order", "order", (1, -1), 0)],
                 ],
                 "omg": [
                     [
@@ -541,7 +555,7 @@ class OCPN_Test(unittest.TestCase):
         print(expected_occn)
 
         self.assertTrue(eq_no_keys(occn, expected_occn))
-        
+
     def test_conversion_multi_variable_2(self):
         name = "OCPN_multi_variable"
 
@@ -565,23 +579,23 @@ class OCPN_Test(unittest.TestCase):
         a3 = OCPetriNet.Arc(a, p3, "order", is_variable=True)
         a.add_out_arc(a3)
         p3.add_in_arc(a3)
-        
+
         a4 = OCPetriNet.Arc(p4, a, "box", is_variable=True)
         p4.add_out_arc(a4)
         a.add_in_arc(a4)
-        
+
         a5 = OCPetriNet.Arc(a, p5, "box", is_variable=True)
         a.add_out_arc(a5)
         p5.add_in_arc(a5)
-        
+
         a6 = OCPetriNet.Arc(a, p6, "box", is_variable=True)
         a.add_out_arc(a6)
         p6.add_in_arc(a6)
 
-
-
         initial_marking = OCMarking({p1: {"order1"}, p4: {"box1"}})
-        final_marking = OCMarking({p2: {"order1"}, p3: {"order1"}, p5: {"box1"}, p6: {"box1"}})
+        final_marking = OCMarking(
+            {p2: {"order1"}, p3: {"order1"}, p5: {"box1"}, p6: {"box1"}}
+        )
 
         ocpn = OCPetriNet(
             name,
@@ -632,17 +646,16 @@ class OCPN_Test(unittest.TestCase):
             },
             "a": {
                 "img": [
-                    [("p1", "order", (0, -1), 0),
-                     ("p4", "box", (0, -1), 0)],
+                    [("p1", "order", (0, -1), 0), ("p4", "box", (0, -1), 0)],
                 ],
                 "omg": [
                     [
-                        ("_silent_aux_a_order", "order", (0, -1), 0),
-                        ("_silent_aux_a_box", "box", (0, -1), 0),
+                        ("_silent_aux_out_a_order", "order", (0, -1), 0),
+                        ("_silent_aux_out_a_box", "box", (0, -1), 0),
                     ],
                 ],
             },
-            "_silent_aux_a_order": {
+            "_silent_aux_out_a_order": {
                 "img": [
                     [("a", "order", (1, 1), 0)],
                 ],
@@ -655,7 +668,7 @@ class OCPN_Test(unittest.TestCase):
             },
             "p2": {
                 "img": [
-                    [("_silent_aux_a_order", "order", (1, -1), 0)],
+                    [("_silent_aux_out_a_order", "order", (1, -1), 0)],
                 ],
                 "omg": [
                     [
@@ -665,7 +678,7 @@ class OCPN_Test(unittest.TestCase):
             },
             "p3": {
                 "img": [
-                    [("_silent_aux_a_order", "order", (1, -1), 0)],
+                    [("_silent_aux_out_a_order", "order", (1, -1), 0)],
                 ],
                 "omg": [
                     [
@@ -678,7 +691,7 @@ class OCPN_Test(unittest.TestCase):
                     [("p2", "order", (1, -1), 0), ("p3", "order", (1, -1), 0)],
                 ],
             },
-            "_silent_aux_a_box": {
+            "_silent_aux_out_a_box": {
                 "img": [
                     [("a", "box", (1, 1), 0)],
                 ],
@@ -691,7 +704,7 @@ class OCPN_Test(unittest.TestCase):
             },
             "p5": {
                 "img": [
-                    [("_silent_aux_a_box", "box", (1, -1), 0)],
+                    [("_silent_aux_out_a_box", "box", (1, -1), 0)],
                 ],
                 "omg": [
                     [
@@ -701,7 +714,7 @@ class OCPN_Test(unittest.TestCase):
             },
             "p6": {
                 "img": [
-                    [("_silent_aux_a_box", "box", (1, -1), 0)],
+                    [("_silent_aux_out_a_box", "box", (1, -1), 0)],
                 ],
                 "omg": [
                     [
