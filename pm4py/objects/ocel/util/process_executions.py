@@ -37,8 +37,7 @@ class Parameters(Enum):
 def apply(ocel: OCEL, variant: str, parameters: Optional[Dict[Any, Any]] = None):
     """
         Extract process executions from an OCEL. Based on Adams et al. "Defining 
-        Cases and Variants for Object-Centric Event Data" (2022). Implementation
-        adapted from OCPA v1.1.
+        Cases and Variants for Object-Centric Event Data" (2022).
 
         Parameters
         ---------------
