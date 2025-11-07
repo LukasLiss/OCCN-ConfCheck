@@ -22,7 +22,7 @@ Contact: info@processintelligence.solutions
 
 from collections import Counter, defaultdict
 import itertools
-from typing import Any, Generic, Set, TypeVar, Union
+from typing import Any, Generic, Optional, Set, TypeVar, Union
 from copy import deepcopy
 from pm4py.objects.oc_causal_net.obj import OCCausalNet
 
@@ -610,6 +610,7 @@ class OCCausalNetSemantics(Generic[N]):
         state: OCCausalNetState,
         act_to_idx: dict = None,
         ot_to_idx: dict = None,
+        objects: Optional[Set] = None,
     ) -> tuple:
         """
         Computes all enabled bindings for a given activity in a given state.
@@ -628,6 +629,9 @@ class OCCausalNetSemantics(Generic[N]):
         ot_to_idx : dict, optional
             If object types are denoted in the state by an id instead of their name,
             a dictionary mapping object types to their index has to be provided here.
+        objects : Set, optional
+            If provided, only bindings are included that handle exactly the given set of objects.
+            If `act` is a start activity, this parameter is mandatory. 
 
         Returns
         -------
@@ -646,6 +650,14 @@ class OCCausalNetSemantics(Generic[N]):
 
         # outstanding obligations for the activity
         obligations = state[act_id]
+        
+        if objects:
+            # filter out obligations not in objects
+            obligations = {
+                (related_act, obj_id, ot_id): count
+                for (related_act, obj_id, ot_id), count in obligations.items()
+                if obj_id in objects
+            }
 
         # pre-process obligations to a dict where keys are (related activity, object_type)
         # and values are sets of object ids (neglecting the count)
@@ -655,9 +667,19 @@ class OCCausalNetSemantics(Generic[N]):
 
         # ----------- Create all possibilities for consumed -----------
 
+        if act.startswith("START_"):
+            if objects is None:
+                raise ValueError(
+                    "For START activities, the 'objects' parameter must be provided."
+                )
+            
+
         possible_consumed = cls.__generate_consumed(
             occn, act, obligations_dict, act_to_idx, ot_to_idx
         )
+        if objects:
+            # filter out consumed that do not use all objects
+            possible_consumed = cls.__filter_consumed_by_objects(possible_consumed, objects)
         if not possible_consumed:
             return ()
 
@@ -689,6 +711,35 @@ class OCCausalNetSemantics(Generic[N]):
                 final_bindings.append((act_id, consumed, produced))
 
         return tuple(final_bindings)
+
+    @classmethod
+    def __filter_consumed_by_objects(cls, possible_consumed, objects: Set) -> Set[tuple]:
+        """
+        Filters the possible consumed tuples to only include those that
+        use exactly the given set of objects.
+
+        Parameters
+        ----------
+        possible_consumed : Set[tuple]
+            Set of possible consumed tuples
+        objects : Set
+            Set of objects to filter by
+
+        Returns
+        -------
+        Set[tuple]
+            Filtered set of consumed tuples
+        """
+        filtered = set()
+        for consumed in possible_consumed:
+            consumed_objects = set()
+            for _, ot_obj_pairs in consumed:
+                for _, obj_ids in ot_obj_pairs:
+                    consumed_objects.update(obj_ids)
+            if consumed_objects == objects:
+                filtered.add(consumed)
+        return filtered
+    
 
     @classmethod
     def __generate_consumed(
@@ -1054,6 +1105,23 @@ class OCCausalNetSemantics(Generic[N]):
             final_produced_tuples.add(produced_tuple)
         return final_produced_tuples
 
+    @classmethod
+    def convert_binding_tuple_to_dict(binding_tuple):
+        """
+        Converts a tuple from a binding (conumed or produced) into a nested dictionary.
+        None is converted to None.
+
+        The inner values (object lists) are converted to sets.
+        """
+        if not binding_tuple:
+            return None
+        return {
+            related_act: {
+                object_type: set(objects) for object_type, objects in objects_per_type
+            }
+            for related_act, objects_per_type in binding_tuple
+        }
+    
     @staticmethod
     def __make_hashable(d):
         """Helper function to create a hashable key from a dictionary."""

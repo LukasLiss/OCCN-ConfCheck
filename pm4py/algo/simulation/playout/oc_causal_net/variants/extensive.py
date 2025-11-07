@@ -284,8 +284,8 @@ def _populate_memo_graph(
             new_state = semantics.bind_activity(
                 occn,
                 act=binding[0],
-                cons=_convert_binding_tuple_to_dict(binding[1]),
-                prod=_convert_binding_tuple_to_dict(binding[2]),
+                cons=semantics.convert_binding_tuple_to_dict(binding[1]),
+                prod=semantics.convert_binding_tuple_to_dict(binding[2]),
                 state=state,
             )
             # clean up fake obligations for start activities
@@ -316,21 +316,7 @@ def _populate_memo_graph(
     return bool(next_steps)
 
 
-def _convert_binding_tuple_to_dict(binding_tuple):
-    """
-    Converts a tuple from a binding (conumed or produced) into a nested dictionary.
-    None is converted to None.
 
-    The inner values (object lists) are converted to sets.
-    """
-    if not binding_tuple:
-        return None
-    return {
-        related_act: {
-            object_type: set(objects) for object_type, objects in objects_per_type
-        }
-        for related_act, objects_per_type in binding_tuple
-    }
 
 
 def _get_enabled_activities(
