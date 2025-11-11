@@ -1106,7 +1106,7 @@ class OCCausalNetSemantics(Generic[N]):
         return final_produced_tuples
 
     @classmethod
-    def convert_binding_tuple_to_dict(binding_tuple):
+    def convert_binding_tuple_to_dict(cls, binding_tuple):
         """
         Converts a tuple from a binding (conumed or produced) into a nested dictionary.
         None is converted to None.
