@@ -12,9 +12,21 @@ class OCCausalNetSemanticsTest(unittest.TestCase):
         state = OCCausalNetState()
         enabled_bindings = OCCausalNetSemantics.enabled_bindings(occn, "a", state)
         self.assertEqual(enabled_bindings, ())
+        enabled_bindings = OCCausalNetSemantics.enabled_bindings(
+            occn, "a", state, objects=set(["o1"])
+        )
+        self.assertEqual(enabled_bindings, ())
 
         state = OCCausalNetState({"a": Counter([("START_order", "o1", "order")])})
         enabled_bindings = OCCausalNetSemantics.enabled_bindings(occn, "a", state)
+        self.assertEqual(len(enabled_bindings), 0)
+        enabled_bindings = OCCausalNetSemantics.enabled_bindings(
+            occn, "a", state, objects=set(["o1"])
+        )
+        self.assertEqual(len(enabled_bindings), 0)
+        enabled_bindings = OCCausalNetSemantics.enabled_bindings(
+            occn, "a", state, objects=set(["o2"])
+        )
         self.assertEqual(len(enabled_bindings), 0)
 
         state = OCCausalNetState(
@@ -25,6 +37,22 @@ class OCCausalNetSemanticsTest(unittest.TestCase):
             }
         )
         enabled_bindings = OCCausalNetSemantics.enabled_bindings(occn, "a", state)
+        self.assertEqual(len(enabled_bindings), 1)
+        enabled_bindings = OCCausalNetSemantics.enabled_bindings(
+            occn, "a", state, objects=set(["o1"])
+        )
+        self.assertEqual(len(enabled_bindings), 0)
+        enabled_bindings = OCCausalNetSemantics.enabled_bindings(
+            occn, "a", state, objects=set(["i1"])
+        )
+        self.assertEqual(len(enabled_bindings), 0)
+        enabled_bindings = OCCausalNetSemantics.enabled_bindings(
+            occn, "a", state, objects=set(["o1", "i2"])
+        )
+        self.assertEqual(len(enabled_bindings), 0)
+        enabled_bindings = OCCausalNetSemantics.enabled_bindings(
+            occn, "a", state, objects=set(["o1", "i1"])
+        )
         self.assertEqual(len(enabled_bindings), 1)
 
         state = OCCausalNetState(
@@ -40,6 +68,22 @@ class OCCausalNetSemanticsTest(unittest.TestCase):
         )
         enabled_bindings = OCCausalNetSemantics.enabled_bindings(occn, "a", state)
         self.assertEqual(len(enabled_bindings), 3)
+        enabled_bindings = OCCausalNetSemantics.enabled_bindings(
+            occn, "a", state, objects=set(["o1", "i1"])
+        )
+        self.assertEqual(len(enabled_bindings), 1)
+        enabled_bindings = OCCausalNetSemantics.enabled_bindings(
+            occn, "a", state, objects=set(["o1", "i2"])
+        )
+        self.assertEqual(len(enabled_bindings), 1)
+        enabled_bindings = OCCausalNetSemantics.enabled_bindings(
+            occn, "a", state, objects=set(["i2", "i1"])
+        )
+        self.assertEqual(len(enabled_bindings), 0)
+        enabled_bindings = OCCausalNetSemantics.enabled_bindings(
+            occn, "a", state, objects=set(["o1", "i1", "i2"])
+        )
+        self.assertEqual(len(enabled_bindings), 1)
 
     def test_enabled_bindings_2(self):
         occn = occn_multi_ot_multi_min_0()
@@ -75,6 +119,23 @@ class OCCausalNetSemanticsTest(unittest.TestCase):
         )
         enabled_bindings = OCCausalNetSemantics.enabled_bindings(occn, "a", state)
         self.assertEqual(len(enabled_bindings), 4)
+        enabled_bindings = OCCausalNetSemantics.enabled_bindings(
+            occn, "a", state, objects=set(["i1", "i2"])
+        )
+        self.assertEqual(len(enabled_bindings), 0)
+        enabled_bindings = OCCausalNetSemantics.enabled_bindings(
+            occn, "a", state, objects=set(["o1"])
+        )
+        self.assertEqual(len(enabled_bindings), 1)
+        enabled_bindings = OCCausalNetSemantics.enabled_bindings(
+            occn, "a", state, objects=set(["o1", "i2"])
+        )
+        self.assertEqual(len(enabled_bindings), 1)
+        enabled_bindings = OCCausalNetSemantics.enabled_bindings(
+            occn, "a", state, objects=set(["o1", "i1", "i2"])
+        )
+        self.assertEqual(len(enabled_bindings), 1)
+        
 
     def test_enabled_bindings_3(self):
 
@@ -114,6 +175,22 @@ class OCCausalNetSemanticsTest(unittest.TestCase):
             occn, "a", state, act_to_idx, ot_to_idx
         )
         self.assertEqual(len(enabled_bindings), 4)
+        enabled_bindings = OCCausalNetSemantics.enabled_bindings(
+            occn, "a", state, act_to_idx, ot_to_idx, objects=set(["i1", "i2"])
+        )
+        self.assertEqual(len(enabled_bindings), 0)
+        enabled_bindings = OCCausalNetSemantics.enabled_bindings(
+            occn, "a", state, act_to_idx, ot_to_idx, objects=set(["o1"])
+        )
+        self.assertEqual(len(enabled_bindings), 1)
+        enabled_bindings = OCCausalNetSemantics.enabled_bindings(
+            occn, "a", state, act_to_idx, ot_to_idx, objects=set(["o1", "i2"])
+        )
+        self.assertEqual(len(enabled_bindings), 1)
+        enabled_bindings = OCCausalNetSemantics.enabled_bindings(
+            occn, "a", state, act_to_idx, ot_to_idx, objects=set(["o1", "i1", "i2"])
+        )
+        self.assertEqual(len(enabled_bindings), 1)
 
     def test_enabled_bindings_4(self):
         occn = occn_multi_ot_multi_marker()
@@ -167,6 +244,30 @@ class OCCausalNetSemanticsTest(unittest.TestCase):
         )
         enabled_bindings = OCCausalNetSemantics.enabled_bindings(occn, "a", state)
         self.assertEqual(len(enabled_bindings), 6)
+        enabled_bindings = OCCausalNetSemantics.enabled_bindings(
+            occn, "a", state, objects=set(["o1", "i1"])
+        )
+        self.assertEqual(len(enabled_bindings), 1)
+        enabled_bindings = OCCausalNetSemantics.enabled_bindings(
+            occn, "a", state, objects=set(["o1", "i1", "i2"])
+        )
+        self.assertEqual(len(enabled_bindings), 1)
+        enabled_bindings = OCCausalNetSemantics.enabled_bindings(
+            occn, "a", state, objects=set(["i2"])
+        )
+        self.assertEqual(len(enabled_bindings), 1)
+        enabled_bindings = OCCausalNetSemantics.enabled_bindings(
+            occn, "a", state, objects=set(["i1", "i2"])
+        )
+        self.assertEqual(len(enabled_bindings), 1)
+        enabled_bindings = OCCausalNetSemantics.enabled_bindings(
+            occn, "a", state, objects=set(["o1"])
+        )
+        self.assertEqual(len(enabled_bindings), 0)
+        enabled_bindings = OCCausalNetSemantics.enabled_bindings(
+            occn, "a", state, objects=set(["o1", "o2", "i1"])
+        )
+        self.assertEqual(len(enabled_bindings), 0)
 
     def test_enabled_bindings_5(self):
         occn = occn_multi_ot_multi_marker_redundant_mg()
@@ -220,6 +321,30 @@ class OCCausalNetSemanticsTest(unittest.TestCase):
         )
         enabled_bindings = OCCausalNetSemantics.enabled_bindings(occn, "a", state)
         self.assertEqual(len(enabled_bindings), 6)
+        enabled_bindings = OCCausalNetSemantics.enabled_bindings(
+            occn, "a", state, objects=set(["o1", "i1"])
+        )
+        self.assertEqual(len(enabled_bindings), 1)
+        enabled_bindings = OCCausalNetSemantics.enabled_bindings(
+            occn, "a", state, objects=set(["o1", "i1", "i2"])
+        )
+        self.assertEqual(len(enabled_bindings), 1)
+        enabled_bindings = OCCausalNetSemantics.enabled_bindings(
+            occn, "a", state, objects=set(["i2"])
+        )
+        self.assertEqual(len(enabled_bindings), 1)
+        enabled_bindings = OCCausalNetSemantics.enabled_bindings(
+            occn, "a", state, objects=set(["i1", "i2"])
+        )
+        self.assertEqual(len(enabled_bindings), 1)
+        enabled_bindings = OCCausalNetSemantics.enabled_bindings(
+            occn, "a", state, objects=set(["o1"])
+        )
+        self.assertEqual(len(enabled_bindings), 0)
+        enabled_bindings = OCCausalNetSemantics.enabled_bindings(
+            occn, "a", state, objects=set(["o1", "o2", "i1"])
+        )
+        self.assertEqual(len(enabled_bindings), 0)
 
     def test_enabled_start_bindings(self):
         occn = occn_start_parallel()
@@ -241,14 +366,14 @@ class OCCausalNetSemanticsTest(unittest.TestCase):
         for binding in enabled_bindings:
             prod_tuple = binding[2]
             prod_dict = {
-                succ:
-                    {
-                        ot: set(objects)
-                        for ot, objects in obj_per_ot
-                    }
+                succ: {ot: set(objects) for ot, objects in obj_per_ot}
                 for succ, obj_per_ot in prod_tuple
             }
-            self.assertIsNotNone(OCCausalNetSemantics.is_binding_enabled(occn, "START_order", None, prod_dict, OCCausalNetState()))
+            self.assertIsNotNone(
+                OCCausalNetSemantics.is_binding_enabled(
+                    occn, "START_order", None, prod_dict, OCCausalNetState()
+                )
+            )
 
 
 def occn_multi_ot_multi_arc():
