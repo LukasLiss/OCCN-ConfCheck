@@ -40,8 +40,8 @@ VERSIONS = {PROCESS_EXECUTION_REPLAY}
 
 
 def apply(
-    log: OCEL,
-    oc_causal_net: OCCausalNet,
+    occn: OCCausalNet,
+    ocel: OCEL,
     parameters: Optional[Dict[Any, Any]] = None,
     variant=DEFAULT_VARIANT,
 ) -> Dict[str, Any]:
@@ -51,9 +51,9 @@ def apply(
 
     Parameters
     -----------
-    log
+    ocel
         OCEL to evaluate
-    oc_causal_net
+    occn
         Object-centric causal net
     parameters
         Parameters related to the replay algorithm
@@ -63,10 +63,12 @@ def apply(
 
     Returns
     ----------
-    fitness_eval
-        Fitness evaluation
+    dictionary
+        Results of the fitness evaluation:
+            - 'log_fitness': overall fitness value (between 0 and 1)
+            - 'no_process_executions': number of process executions derived from the log
     """
     if parameters is None:
         parameters = {}
 
-    return exec_utils.get_variant(variant).apply(log, oc_causal_net, parameters=parameters)
+    return exec_utils.get_variant(variant).apply(occn=occn, ocel=ocel, parameters=parameters)

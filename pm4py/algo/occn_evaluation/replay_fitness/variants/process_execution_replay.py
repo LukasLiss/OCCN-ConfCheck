@@ -40,8 +40,8 @@ class Parameters(Enum):
 
 
 def apply(
+    occn: OCCausalNet,
     ocel: OCEL,
-    oc_causal_net: OCCausalNet,
     parameters: Optional[Dict[Any, Any]] = None,
 ) -> Dict[str, Any]:
     """
@@ -51,10 +51,10 @@ def apply(
 
     Parameters
     -----------
+    occn
+        Causal net
     ocel
         OCEL to evaluate
-    oc_causal_net
-        Causal net
     parameters
         Parameters of the algorithm, including:
         - Parameters.EVENT_ID => the event identifier column
@@ -93,7 +93,7 @@ def apply(
     for px in pxs:
         px_processed = preprocess_process_execution(ocel, px, parameters=parameters)
         if process_execution_fitting(
-            oc_causal_net, px_processed, parameters=parameters
+            occn, px_processed, parameters=parameters
         ):
             fitting += 1
         total += 1

@@ -19,4 +19,4 @@ visit <https://www.gnu.org/licenses/>.
 Website: https://processintelligence.solutions
 Contact: info@processintelligence.solutions
 '''
-from pm4py.algo.evaluation.replay_fitness.variants import process_execution_replay
+from pm4py.algo.occn_evaluation.replay_fitness.variants import process_execution_replay
