@@ -89,11 +89,13 @@ def apply(
     total = 0
     fitting = 0
 
+    # Preprocess pxs
+    pxs_processed = preprocess_process_executions(ocel, pxs, parameters=parameters)
+
     # Compute fitness
-    for px in pxs:
-        px_processed = preprocess_process_execution(ocel, px, parameters=parameters)
+    for px in pxs_processed:
         if process_execution_fitting(
-            occn, px_processed, parameters=parameters
+            occn, px
         ):
             fitting += 1
         total += 1
@@ -103,26 +105,28 @@ def apply(
     return {"log_fitness": log_fitness, "no_process_executions": len(pxs)}
 
 
-def preprocess_process_execution(
+def preprocess_process_executions(
     ocel: OCEL,
-    process_execution: Collection[Any],
+    process_executions: Collection[Collection[Any]],
     parameters: Optional[Dict[Any, Any]] = None,
 ) -> Collection[Tuple]:
     """
-    Preprocess a process execution into a list of (activity, object_type to object_ids mapping) tuples
+    Preprocess a collection of process executions into a list of lists of (activity, object_type to object_ids mapping) tuples
 
     Parameters
     -----------
     ocel
         Object-centric event log
-    process_execution
-        A collection of events ids representing a process execution
+    process_executions
+        A collection of process executions, where a px is a collection of 
+        events ids
 
     Returns
     -----------
     collection
-        Preprocessed process execution.
-        Tuples of form (activity, object_type to object_ids mapping) where
+        Preprocessed process executions.
+        List of process executions, where each process execution is a
+        list of tuples of form (activity, object_type to object_ids mapping) where
         object_type to object_ids mapping is represented as a frozenset
         of (object_type, frozenset(object_ids)) pairs
     """
@@ -136,6 +140,11 @@ def preprocess_process_execution(
         parameters,
         constants.DEFAULT_OBJECT_ID,
     )
+    event_id_key = exec_utils.get_param_value(
+        Parameters.EVENT_ID,
+        parameters,
+        constants.DEFAULT_EVENT_ID,
+    )
     object_type_key = exec_utils.get_param_value(
         Parameters.OBJECT_TYPE,
         parameters,
@@ -146,36 +155,52 @@ def preprocess_process_execution(
         parameters,
         constants.DEFAULT_EVENT_ACTIVITY,
     )
+    
+    # set indices for faster lookup
+    ocel.events.set_index(event_id_key, inplace=True)
+    ocel.objects.set_index(object_id_key, inplace=True)
+    
+    
+    pxs = []
 
     # Preprocessing
-    px = list(process_execution)
-    # order by timestamp
-    px.sort(key=lambda e: ocel.events[e][event_timestamp_key])
-    px_new = []
-    px_objects = dict()
-    # add activity id & objects involved
-    for e in px:
-        activity = ocel.events[e][event_activity_key]
-        objs = ocel.events[e][object_id_key]
-        obj_by_type = {}
-        for o in objs:
-            obj_type = ocel.objects[o][object_type_key]
-            obj_by_type[obj_type] = obj_by_type.get(obj_type, []) + [o]
-        for ot in obj_by_type:
-            px_objects[ot] = px_objects.get(ot, set()).union(set(obj_by_type[ot]))
-        px_new.append(
-            (activity, frozenset((k, frozenset(v)) for k, v in obj_by_type.items()))
-        )
+    for process_execution in process_executions:
+        px = list(process_execution)
+        
+        # order by timestamp 
+        px.sort(key=lambda event_id: ocel.events.loc[event_id][event_timestamp_key])
+        px_new = []
+        px_objects = dict()
+        
+        # add activity id & objects involved
+        for e in px:
+            activity = ocel.events.loc[e][event_activity_key]
+            objs = set(ocel.relations[ocel.relations[event_id_key] == e][object_id_key].unique())
+            obj_by_type = {}
+            for o in objs:
+                obj_type = ocel.objects.loc[o][object_type_key]
+                obj_by_type[obj_type] = obj_by_type.get(obj_type, []) + [o]
+            for ot in obj_by_type:
+                px_objects[ot] = px_objects.get(ot, set()).union(set(obj_by_type[ot]))
+            px_new.append(
+                (activity, frozenset((k, frozenset(v)) for k, v in obj_by_type.items()))
+            )
 
-    # start and end activities per object
-    start_events = []
-    end_events = []
-    for ot in px_objects:
-        for o in px_objects[ot]:
-            start_events.append((f"START_{ot}", frozenset({(ot, frozenset({o}))})))
-            end_events.append((f"END_{ot}", frozenset({(ot, frozenset({o}))})))
+        # start and end activities per object
+        start_events = []
+        end_events = []
+        for ot in px_objects:
+            for o in px_objects[ot]:
+                start_events.append((f"START_{ot}", frozenset({(ot, frozenset({o}))})))
+                end_events.append((f"END_{ot}", frozenset({(ot, frozenset({o}))})))
 
-    return start_events + px_new + end_events
+        pxs.append(start_events + px_new + end_events)
+
+    # reset indices
+    ocel.events.reset_index(inplace=True)
+    ocel.objects.reset_index(inplace=True)
+
+    return pxs
 
 
 def process_execution_fitting(occn: OCCausalNet, px: Collection[Tuple]) -> bool:
@@ -236,7 +261,7 @@ def _is_fitting(
 
     # Compute all possible bindings for the activity given the state and objects
     if activity.startswith("START_"):
-        ot, _ = next(iter(obj_type_to_obj_ids.items()))
+        ot = next(iter(obj_type_to_obj_ids))[0]
         bindings = OCCausalNetSemantics.enabled_bindings_start_activity(
             occn, activity, ot, objects
         )
