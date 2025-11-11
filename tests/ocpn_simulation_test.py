@@ -2,9 +2,7 @@ import unittest
 import time
 from pm4py.objects.ocpn.obj import OCPetriNet, OCMarking
 from pm4py.objects.ocel.obj import OCEL
-from pm4py.algo.simulation.playout.ocpn.variants.extensive import (
-    apply as playout_ocpn_extensive,
-)
+from pm4py.algo.simulation.playout.ocpn.variants import extensive as playout_extensive
 
 
 class OCPNSimulationTest(unittest.TestCase):
@@ -23,8 +21,8 @@ class OCPNSimulationTest(unittest.TestCase):
     def test_playout_ocpn_extensive(self):
 
         params = {
-            "return_traces": True,
-            "maxBindingsPerActivity": 3,
+            playout_extensive.Parameters.MAX_BINDINGS_PER_ACTIVITY: 3,
+            playout_extensive.Parameters.RETURN_TRACES: True,
         }
 
         ocpn = ocpn_multi_start()
@@ -35,7 +33,7 @@ class OCPNSimulationTest(unittest.TestCase):
         )
         final_marking = OCMarking({places["o2"]: {"order1"}, places["o4"]: {"order1"}})
 
-        (traces, _, _) = playout_ocpn_extensive(
+        (traces, _, _) = playout_extensive.apply(
             ocpn, initial_marking, final_marking, parameters=params
         )
         self.assertEqual(len(traces), 1)
@@ -45,7 +43,7 @@ class OCPNSimulationTest(unittest.TestCase):
         )
         final_marking = OCMarking({places["o2"]: {"order1"}, places["o4"]: {"order1"}})
 
-        (traces, _, _) = playout_ocpn_extensive(
+        (traces, _, _) = playout_extensive.apply(
             ocpn, initial_marking, final_marking, parameters=params
         )
         self.assertEqual(len(traces), 0)
@@ -53,8 +51,8 @@ class OCPNSimulationTest(unittest.TestCase):
     def test_playout_ocpn_extensive_2(self):
         
         params = {
-            "return_traces": True,
-            "maxBindingsPerActivity": 3,
+            playout_extensive.Parameters.MAX_BINDINGS_PER_ACTIVITY: 3,
+            playout_extensive.Parameters.RETURN_TRACES: True,
         }
         
         ocpn = ocpn_big()
@@ -63,7 +61,7 @@ class OCPNSimulationTest(unittest.TestCase):
         initial_marking = OCMarking({places["o1"]: {"order1"}, places["i1"]: {"item1"}})
         final_marking = OCMarking({places["o5"]: {"order1"}, places["i5"]: {"item1"}})
 
-        (traces, _, _) = playout_ocpn_extensive(
+        (traces, _, _) = playout_extensive.apply(
             ocpn, initial_marking, final_marking, parameters=params
         )
         self.assertEqual(len(traces), 52)
