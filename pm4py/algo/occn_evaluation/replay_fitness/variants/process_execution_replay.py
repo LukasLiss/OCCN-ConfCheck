@@ -27,7 +27,6 @@ from pm4py.objects.ocel import constants
 from pm4py.objects.ocel.obj import OCEL
 from pm4py.objects.oc_causal_net.obj import OCCausalNet
 from pm4py.objects.oc_causal_net.semantics import OCCausalNetState, OCCausalNetSemantics
-from pm4py.objects.ocel.util import process_executions
 
 
 class Parameters(Enum):
@@ -42,6 +41,7 @@ class Parameters(Enum):
 def apply(
     occn: OCCausalNet,
     ocel: OCEL,
+    process_executions: Optional[Collection] = None,
     parameters: Optional[Dict[Any, Any]] = None,
 ) -> Dict[str, Any]:
     """
@@ -55,6 +55,8 @@ def apply(
         Causal net
     ocel
         OCEL to evaluate
+    process_executions
+        Precomputed process executions. If None, process executions will be derived from the OCEL.
     parameters
         Parameters of the algorithm, including:
         - Parameters.EVENT_ID => the event identifier column
@@ -74,24 +76,59 @@ def apply(
     if parameters is None:
         parameters = {}
 
-    process_execution_extraction = exec_utils.get_param_value(
-        Parameters.PROCESS_EXECUTION_EXTRACTION,
-        parameters,
-        "connected_components",
-    )
+    if process_executions:
+        pxs = process_executions
+    else:
+        process_execution_extraction = exec_utils.get_param_value(
+            Parameters.PROCESS_EXECUTION_EXTRACTION,
+            parameters,
+            "connected_components",
+        )
 
-    # Derive process executions
-    px_results = process_executions.apply(
-        ocel, variant=process_execution_extraction, parameters=parameters
-    )
-    pxs = px_results["process_executions"]
+        # Derive process executions
+        px_results = process_executions.apply(
+            ocel, variant=process_execution_extraction, parameters=parameters
+        )
+        pxs = px_results["process_executions"]
+    
 
     total = 0
     fitting = 0
 
     # Preprocess pxs
     pxs_processed = preprocess_process_executions(ocel, pxs, parameters=parameters)
-
+    
+    # --------------- TODO TEMP START ---------------
+    print(f"Preprocessed {len(pxs_processed)} process executions.") # TODO REMOVE
+    max_len = max(len(px) for px in pxs_processed)
+    print(f"Max len: {max_len} among process executions.") # TODO REMOVE
+    if max_len > 1000:
+        for i, px in enumerate(pxs_processed):# TODO REMOVE
+            print(f"Process execution {i} has {len(px)} events.") # TODO REMOVE
+    px = pxs_processed[1]
+    obj_counts = {}
+    obj_counts_per_type = {}
+    unique_objs_per_type = {}
+    act_count = {}
+    for activity, obj_type_to_obj_ids in px:
+        act_count[activity] = act_count.get(activity, 0) + 1
+        for obj_type, obj_ids in obj_type_to_obj_ids:
+            for obj in obj_ids:
+                obj_counts[obj] = obj_counts.get(obj, 0) + 1
+                obj_counts_per_type[obj_type] = obj_counts_per_type.get(obj_type, 0) + 1
+                unique_objs_per_type[obj_type] = unique_objs_per_type.get(obj_type, set()).union({obj})
+    unique_obj_counts = {}
+    for obj_type in unique_objs_per_type:
+        unique_obj_counts[obj_type] = len(unique_objs_per_type[obj_type])
+    print(f"Activity counts in process execution 1: {act_count}")
+    print(f"Object occurrences in process execution 1: {obj_counts}")
+    max_obj = max(obj_counts, key=lambda k: obj_counts[k])
+    print(f"Most frequent object in process execution 1: {max_obj} with {obj_counts[max_obj]} occurrences")
+    print(f"Object occurences per type in process execution 1: {obj_counts_per_type}")
+    print(f"Unique objects per type in process execution 1: {unique_obj_counts}")
+    print(f"Total unique objects in process execution 1: {sum(unique_obj_counts.values())}")
+    # --------------- TODO TEMP END ---------------
+    
     # Compute fitness
     for px in pxs_processed:
         if process_execution_fitting(
