@@ -22,13 +22,13 @@ Contact: info@processintelligence.solutions
 
 from collections import defaultdict
 from enum import Enum
-from typing import Any, Collection, Dict, Optional, Tuple
+from typing import Any, Collection, Dict, List, Optional, Tuple
 from pm4py.util import exec_utils
 from pm4py.objects.ocel import constants
 from pm4py.objects.ocel.obj import OCEL
 from pm4py.objects.oc_causal_net.obj import OCCausalNet
 from pm4py.objects.oc_causal_net.semantics import OCCausalNetState, OCCausalNetSemantics
-import time 
+import time
 
 
 class Parameters(Enum):
@@ -92,185 +92,227 @@ def apply(
             ocel, variant=process_execution_extraction, parameters=parameters
         )
         pxs = px_results["process_executions"]
-    
 
+    # --------------- TODO TEMP START ---------------
+    start_time = time.time()
+    # --------------- TODO TEMP END ---------------
+
+    print("Building lookup maps for preprocessing...")  # TODO REMOVE
+    start_setup_time = time.time()
+
+    lookup_maps = _build_lookup_maps(ocel, parameters)
+
+    end_setup_time = time.time()
+    print(
+        f"Lookup maps built in: {end_setup_time - start_setup_time:.4f} seconds."
+    )  # TODO REMOVE
+
+    # --------------- TODO TEMP START ---------------
+    end_time = time.time()
+    print(
+        f"Pre-build lookup maps time for {len(pxs)} process executions: {end_time - start_time:.4f} seconds."
+    )  # TODO REMOVE
+    # max_len = max(len(px) for px in pxs_processed)
+    # print(f"Max len: {max_len} among process executions.") # TODO REMOVE
+    # if max_len > 1000:
+    #    for i, px in enumerate(pxs_processed):# TODO REMOVE
+    #        print(f"Process execution {i} has {len(px)} events.") # TODO REMOVE
+    # px = pxs_processed[1]
+    # obj_counts = {}
+    # obj_counts_per_type = {}
+    # unique_objs_per_type = {}
+    # act_count = {}
+    # for activity, obj_type_to_obj_ids in px:
+    #    act_count[activity] = act_count.get(activity, 0) + 1
+    #    for obj_type, obj_ids in obj_type_to_obj_ids:
+    #        for obj in obj_ids:
+    #            obj_counts[obj] = obj_counts.get(obj, 0) + 1
+    #            obj_counts_per_type[obj_type] = obj_counts_per_type.get(obj_type, 0) + 1
+    #            unique_objs_per_type[obj_type] = unique_objs_per_type.get(obj_type, set()).union({obj})
+    # unique_obj_counts = {}
+    # for obj_type in unique_objs_per_type:
+    #    unique_obj_counts[obj_type] = len(unique_objs_per_type[obj_type])
+    # print(f"Activity counts in process execution 1: {act_count}")
+    # print(f"Object occurrences in process execution 1: {obj_counts}")
+    # max_obj = max(obj_counts, key=lambda k: obj_counts[k])
+    # print(f"Most frequent object in process execution 1: {max_obj} with {obj_counts[max_obj]} occurrences")
+    # print(f"Object occurences per type in process execution 1: {obj_counts_per_type}")
+    # print(f"Unique objects per type in process execution 1: {unique_obj_counts}")
+    # print(f"Total unique objects in process execution 1: {sum(unique_obj_counts.values())}")
+    print(f"Starting fitness computation for {len(pxs)} process executions...")
+    start_time = time.time()
+    time_per_event_count = []
+    time_per_object_count = []
+    # --------------- TODO TEMP END ---------------
+
+    # Compute fitness
     total = 0
     fitting = 0
-    
-    # --------------- TODO TEMP START ---------------
-    start_time = time.time()
-    # --------------- TODO TEMP END ---------------
 
-    # Preprocess pxs
-    pxs_processed = preprocess_process_executions(ocel, pxs, parameters=parameters)
-    
-    # --------------- TODO TEMP START ---------------
-    end_time = time.time()
-    print(f"Preprocessing time for {len(pxs)} process executions: {end_time - start_time:.4f} seconds.") # TODO REMOVE
-    print(f"Preprocessed {len(pxs_processed)} process executions.") # TODO REMOVE
-    max_len = max(len(px) for px in pxs_processed)
-    print(f"Max len: {max_len} among process executions.") # TODO REMOVE
-    if max_len > 1000:
-        for i, px in enumerate(pxs_processed):# TODO REMOVE
-            print(f"Process execution {i} has {len(px)} events.") # TODO REMOVE
-    px = pxs_processed[1]
-    obj_counts = {}
-    obj_counts_per_type = {}
-    unique_objs_per_type = {}
-    act_count = {}
-    for activity, obj_type_to_obj_ids in px:
-        act_count[activity] = act_count.get(activity, 0) + 1
-        for obj_type, obj_ids in obj_type_to_obj_ids:
-            for obj in obj_ids:
-                obj_counts[obj] = obj_counts.get(obj, 0) + 1
-                obj_counts_per_type[obj_type] = obj_counts_per_type.get(obj_type, 0) + 1
-                unique_objs_per_type[obj_type] = unique_objs_per_type.get(obj_type, set()).union({obj})
-    unique_obj_counts = {}
-    for obj_type in unique_objs_per_type:
-        unique_obj_counts[obj_type] = len(unique_objs_per_type[obj_type])
-    print(f"Activity counts in process execution 1: {act_count}")
-    print(f"Object occurrences in process execution 1: {obj_counts}")
-    max_obj = max(obj_counts, key=lambda k: obj_counts[k])
-    print(f"Most frequent object in process execution 1: {max_obj} with {obj_counts[max_obj]} occurrences")
-    print(f"Object occurences per type in process execution 1: {obj_counts_per_type}")
-    print(f"Unique objects per type in process execution 1: {unique_obj_counts}")
-    print(f"Total unique objects in process execution 1: {sum(unique_obj_counts.values())}")
-    start_time = time.time()
-    # --------------- TODO TEMP END ---------------
-    
-    # Compute fitness
-    for px in pxs_processed:
-        if process_execution_fitting(
-            occn, px
-        ):
+    for px in pxs:
+        px_start_time = time.time()  # TODO REMOVE
+
+        # Preprocess px
+        px_processed = _preprocess_single_px(px, *lookup_maps)
+
+        # Check fitting
+        if process_execution_fitting(occn, px_processed):
             fitting += 1
+
         total += 1
 
+        px_end_time = time.time()  # TODO REMOVE
+        px_time = px_end_time - px_start_time  # TODO REMOVE
+        px_event_count = len(px)  # TODO REMOVE
+        px_object_count = sum(
+            len(objs) for _, ot_to_obj in px_processed for _, objs in ot_to_obj
+        )  # TODO
+        time_per_event_count.append((px_event_count, px_time))  # TODO REMOVE
+        time_per_object_count.append((px_object_count, px_time))  # TODO REMOVE
+
     log_fitness = fitting / total if total > 0 else 0.0
-    
+
     # --------------- TODO START END ---------------
     end_time = time.time()
-    print(f"Fitness computation time for {len(pxs)} process executions: {end_time - start_time:.4f} seconds.") # TODO REMOVE
+    print(
+        f"Fitness computation time for {len(pxs)} process executions: {end_time - start_time:.4f} seconds."
+    )  # TODO REMOVE
     # --------------- TODO TEMP END ---------------
-    
 
-    return {"log_fitness": log_fitness, "no_process_executions": len(pxs)}
+    return {
+        "log_fitness": log_fitness,
+        "no_process_executions": len(pxs),
+        "time_per_event_count": time_per_event_count, # TODO REMOVE
+        "time_per_object_count": time_per_object_count, # TODO REMOVE
+    }
 
 
-def preprocess_process_executions(
-    ocel: OCEL,
-    process_executions: Collection[Collection[Any]],
-    parameters: Optional[Dict[Any, Any]] = None,
-) -> Collection[Tuple]:
+def _preprocess_single_px(
+    process_execution: Collection[Any],
+    event_map: Dict,
+    object_to_type_map: Dict,
+    event_to_objs_map: Dict,
+) -> List[Tuple]:
     """
-    Preprocess a collection of process executions into a list of lists of (activity, object_type to object_ids mapping) tuples
+    Preprocesses a process execution using the pre-built lookup maps.
+
+    Parameters
+    -----------
+    process_execution
+        A process execution, where a px is a collection of events ids
+    event_map
+        mapping from event ID to (timestamp, activity)
+    object_to_type_map
+        mapping from object ID to object type
+    event_to_objs_map
+        mapping from event ID to set of object IDs
+
+    Returns
+    -----------
+    list
+        Preprocessed process execution.
+        A list of tuples of form (activity, object_type to object_ids mapping) where
+        object_type to object_ids mapping is represented as a frozenset
+        of (object_type, frozenset(object_ids)) pairs
+    """
+    px = list(process_execution)
+
+    # order by timestamp
+    px.sort(key=lambda event_id: event_map.get(event_id, (None, None))[0])
+
+    px_new = []
+    px_objects = defaultdict(set)
+
+    # add activity id & objects involved
+    for e in px:
+        event_data = event_map.get(e, None)
+        if event_data is None:
+            print(f"[WARNING] Event id {e} not found in OCEL events.")
+            continue
+
+        activity = event_data[1]
+        objs = event_to_objs_map.get(e, set())
+
+        obj_by_type = defaultdict(list)
+        for o in objs:
+            obj_type = object_to_type_map.get(o)
+            if obj_type:
+                obj_by_type[obj_type].append(o)
+            else:
+                print(f"[WARNING] Object id {o} not found in OCEL objects.")
+
+        for ot, o_list in obj_by_type.items():
+            px_objects[ot].update(o_list)
+
+        px_new.append(
+            (activity, frozenset((k, frozenset(v)) for k, v in obj_by_type.items()))
+        )
+
+    # start and end activities per object
+    start_events = []
+    end_events = []
+    for ot in px_objects:
+        for o in px_objects[ot]:
+            start_events.append((f"START_{ot}", frozenset({(ot, frozenset({o}))})))
+            end_events.append((f"END_{ot}", frozenset({(ot, frozenset({o}))})))
+
+    return start_events + px_new + end_events
+
+
+def _build_lookup_maps(
+    ocel: OCEL, parameters: Optional[Dict[Any, Any]] = None
+) -> Tuple:
+    """
+    Builds all necessary lookup maps for preprocessing.
 
     Parameters
     -----------
     ocel
         Object-centric event log
-    process_executions
-        A collection of process executions, where a px is a collection of 
-        events ids
+    parameters
+        Parameters of the algorithm
 
     Returns
     -----------
-    collection
-        Preprocessed process executions.
-        List of process executions, where each process execution is a
-        list of tuples of form (activity, object_type to object_ids mapping) where
-        object_type to object_ids mapping is represented as a frozenset
-        of (object_type, frozenset(object_ids)) pairs
+    tuple
+        A tuple containing:
+            - event_map: mapping from event ID to (timestamp, activity)
+            - object_to_type_map: mapping from object ID to object type
+            - event_to_objs_map: mapping from event ID to set of object IDs
     """
     event_timestamp_key = exec_utils.get_param_value(
-        Parameters.EVENT_TIMESTAMP,
-        parameters,
-        constants.DEFAULT_EVENT_TIMESTAMP,
+        Parameters.EVENT_TIMESTAMP, parameters, constants.DEFAULT_EVENT_TIMESTAMP
     )
     object_id_key = exec_utils.get_param_value(
-        Parameters.OBJECT_ID,
-        parameters,
-        constants.DEFAULT_OBJECT_ID,
+        Parameters.OBJECT_ID, parameters, constants.DEFAULT_OBJECT_ID
     )
     event_id_key = exec_utils.get_param_value(
-        Parameters.EVENT_ID,
-        parameters,
-        constants.DEFAULT_EVENT_ID,
+        Parameters.EVENT_ID, parameters, constants.DEFAULT_EVENT_ID
     )
     object_type_key = exec_utils.get_param_value(
-        Parameters.OBJECT_TYPE,
-        parameters,
-        constants.DEFAULT_OBJECT_TYPE,
+        Parameters.OBJECT_TYPE, parameters, constants.DEFAULT_OBJECT_TYPE
     )
     event_activity_key = exec_utils.get_param_value(
-        Parameters.EVENT_ACTIVITY,
-        parameters,
-        constants.DEFAULT_EVENT_ACTIVITY,
+        Parameters.EVENT_ACTIVITY, parameters, constants.DEFAULT_EVENT_ACTIVITY
     )
-    
-    # Builds maps for faster lookup
-    event_map = dict(zip(
-        ocel.events[event_id_key], 
-        ocel.events[[event_timestamp_key, event_activity_key]].values
-    ))
-    
-    object_to_type_map = dict(zip(
-        ocel.objects[object_id_key], 
-        ocel.objects[object_type_key]
-    ))
-    
+
+    # Build maps for faster lookup
+    event_map = dict(
+        zip(
+            ocel.events[event_id_key],
+            ocel.events[[event_timestamp_key, event_activity_key]].values,
+        )
+    )
+
+    object_to_type_map = dict(
+        zip(ocel.objects[object_id_key], ocel.objects[object_type_key])
+    )
+
     event_to_objs_map = defaultdict(set)
     for e_id, o_id in ocel.relations[[event_id_key, object_id_key]].values:
         event_to_objs_map[e_id].add(o_id)
-    
-    pxs = []
 
-    # Preprocessing
-    for process_execution in process_executions:
-        px = list(process_execution)
-        
-        # order by timestamp 
-        px.sort(key=lambda event_id: event_map.get(event_id, (None, None))[0])
-        
-        px_new = []
-        px_objects = defaultdict(set)
-        
-        # add activity id & objects involved
-        for e in px:
-            event_data = event_map.get(e, None)
-            if event_data is None:
-                print(f"[WARNING] Event id {e} not found in OCEL events.")
-                continue 
-                
-            activity = event_data[1]
-            objs = event_to_objs_map.get(e, set())
-
-            obj_by_type = defaultdict(list)
-            for o in objs:
-                obj_type = object_to_type_map.get(o)
-                if obj_type: 
-                    obj_by_type[obj_type].append(o)
-                else:
-                    print(f"[WARNING] Object id {o} not found in OCEL objects.")
-
-            for ot, o_list in obj_by_type.items():
-                px_objects[ot].update(o_list)
-
-            px_new.append(
-                (activity, frozenset((k, frozenset(v)) for k, v in obj_by_type.items()))
-            )
-
-        # start and end activities per object
-        start_events = []
-        end_events = []
-        for ot in px_objects:
-            for o in px_objects[ot]:
-                start_events.append((f"START_{ot}", frozenset({(ot, frozenset({o}))})))
-                end_events.append((f"END_{ot}", frozenset({(ot, frozenset({o}))})))
-
-        pxs.append(start_events + px_new + end_events)
-
-    return pxs
+    return (event_map, object_to_type_map, event_to_objs_map)
 
 
 def process_execution_fitting(occn: OCCausalNet, px: Collection[Tuple]) -> bool:
@@ -336,11 +378,13 @@ def _is_fitting(
             occn, activity, ot, objects
         )
     else:
-        bindings = OCCausalNetSemantics.enabled_bindings(occn, activity, state, objects=objects)
-        
+        bindings = OCCausalNetSemantics.enabled_bindings(
+            occn, activity, state, objects=objects
+        )
+
     # Prune bindings based on knowledge about the rest of the px
-    #bindings = _prune_bindings(occn, px, index, bindings) TODO enable and implement
-    
+    # bindings = _prune_bindings(occn, px, index, bindings) TODO enable and implement
+
     for binding in bindings:
         new_state = OCCausalNetSemantics.bind_activity(
             occn,
@@ -354,7 +398,10 @@ def _is_fitting(
 
     return False
 
-def _prune_bindings(occn: OCCausalNet, px: Collection[Tuple], index: int, bindings: Collection[Tuple]) -> Collection[Tuple]:
+
+def _prune_bindings(
+    occn: OCCausalNet, px: Collection[Tuple], index: int, bindings: Collection[Tuple]
+) -> Collection[Tuple]:
     """
     Prune the bindings based on the process execution and the current index.
 
@@ -390,6 +437,7 @@ def _prune_bindings(occn: OCCausalNet, px: Collection[Tuple], index: int, bindin
 
     return filtered_bindings
 
+
 def _prune_consumed(occn: OCCausalNet, consumed: Tuple) -> bool:
     """
     Prune consumed obligations based on the causal net.
@@ -408,6 +456,7 @@ def _prune_consumed(occn: OCCausalNet, consumed: Tuple) -> bool:
     """
     # For future implementation
     return False
+
 
 def _prune_produced(occn: OCCausalNet, produced: Tuple) -> bool:
     """

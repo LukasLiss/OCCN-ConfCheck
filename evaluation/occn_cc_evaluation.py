@@ -1,11 +1,14 @@
 import os
-from typing import List
 import pm4py
+import pandas as pd
+from typing import Any, Dict, List
+from datetime import datetime
 from container_logistics_occn import occn_container_logistics
 from pm4py.algo.occn_evaluation.replay_fitness import algorithm as occn_replay_fitness
 from p2p_occn import occn_p2p
 from pm4py.objects.ocel import constants
 from pm4py.objects.ocel.util import process_executions
+
 
 
 def ocel_on_occn_eval(occn, ocel, ocel_name):
@@ -34,8 +37,9 @@ def ocel_on_occn_eval(occn, ocel, ocel_name):
 
     # replay filtered pxs on OCCN
     eval_results = occn_replay_fitness.apply(occn=occn, ocel=ocel_filtered, process_executions=pxs_filtered)
-    print(f"Evaluation results: {eval_results}")
-
+    print(f"Evaluation results: \n log_fitness: {eval_results['log_fitness']}, \n no_process_executions: {eval_results['no_process_executions']}")
+    # log results
+    _log_results(eval_results, ocel_name)
 
 def activities_in_occn(ocel_name):
     if ocel_name == "ContainerLogistics.json":
@@ -152,6 +156,64 @@ def filter_pxs(pxs: List, ocel, activity_dict):
             filtered_pxs.append(filtered_px)
 
     return filtered_pxs
+
+def _log_results(eval_results: Dict[str, Any], ocel_name: str, directory_path="evaluation/occn_cc_evaluation_results/data"):
+    """
+    Logs the timing results to .csv files.
+    
+    Parameters
+    ----------------
+    eval_results
+        Evaluation results dictionary, expected to contain:
+        - "time_per_event_count": List of (no_events, time) tuples
+        - "time_per_object_count": List of (no_objects, time) tuples
+    ocel_name
+        Name of the OCEL
+    directory_path
+        Directory path to save the results
+    """
+    if not os.path.exists(directory_path):
+        os.makedirs(directory_path)
+        print(f"Created directory: {directory_path}")
+    
+    # Format: YYYY-MM-DD_HH-MM-SS
+    now_str = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+
+    time_per_event_count = eval_results.get("time_per_event_count")
+    
+    if time_per_event_count:
+        try:
+            event_df = pd.DataFrame(time_per_event_count, columns=["no_events", "time"])
+            
+            event_filename = f"{now_str}_{ocel_name}_event.csv"
+            event_filepath = os.path.join(directory_path, event_filename)
+            
+            event_df.to_csv(event_filepath, index=False)
+            
+            print(f"Successfully saved event results to: {os.path.abspath(event_filepath)}")
+            
+        except Exception as e:
+            print(f"Error saving event results: {e}")
+    else:
+        print("No 'time_per_event_count' data found in results. Skipping event log.")
+
+    time_per_object_count = eval_results.get("time_per_object_count")
+    
+    if time_per_object_count:
+        try:
+            object_df = pd.DataFrame(time_per_object_count, columns=["no_objects", "time"])
+            
+            object_filename = f"{now_str}_{ocel_name}_object.csv"
+            object_filepath = os.path.join(directory_path, object_filename)
+            
+            object_df.to_csv(object_filepath, index=False)
+            
+            print(f"Successfully saved object results to: {os.path.abspath(object_filepath)}")
+            
+        except Exception as e:
+            print(f"Error saving object results: {e}")
+    else:
+        print("No 'time_per_object_count' data found in results. Skipping object log.")
 
 
 if __name__ == "__main__":
