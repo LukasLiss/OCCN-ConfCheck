@@ -20,6 +20,7 @@ Website: https://processintelligence.solutions
 Contact: info@processintelligence.solutions
 """
 
+from collections import defaultdict
 from enum import Enum
 from typing import Any, Collection, Dict, Optional, Tuple
 from pm4py.util import exec_utils
@@ -27,6 +28,7 @@ from pm4py.objects.ocel import constants
 from pm4py.objects.ocel.obj import OCEL
 from pm4py.objects.oc_causal_net.obj import OCCausalNet
 from pm4py.objects.oc_causal_net.semantics import OCCausalNetState, OCCausalNetSemantics
+import time 
 
 
 class Parameters(Enum):
@@ -94,11 +96,17 @@ def apply(
 
     total = 0
     fitting = 0
+    
+    # --------------- TODO TEMP START ---------------
+    start_time = time.time()
+    # --------------- TODO TEMP END ---------------
 
     # Preprocess pxs
     pxs_processed = preprocess_process_executions(ocel, pxs, parameters=parameters)
     
     # --------------- TODO TEMP START ---------------
+    end_time = time.time()
+    print(f"Preprocessing time for {len(pxs)} process executions: {end_time - start_time:.4f} seconds.") # TODO REMOVE
     print(f"Preprocessed {len(pxs_processed)} process executions.") # TODO REMOVE
     max_len = max(len(px) for px in pxs_processed)
     print(f"Max len: {max_len} among process executions.") # TODO REMOVE
@@ -127,6 +135,7 @@ def apply(
     print(f"Object occurences per type in process execution 1: {obj_counts_per_type}")
     print(f"Unique objects per type in process execution 1: {unique_obj_counts}")
     print(f"Total unique objects in process execution 1: {sum(unique_obj_counts.values())}")
+    start_time = time.time()
     # --------------- TODO TEMP END ---------------
     
     # Compute fitness
@@ -138,6 +147,12 @@ def apply(
         total += 1
 
     log_fitness = fitting / total if total > 0 else 0.0
+    
+    # --------------- TODO START END ---------------
+    end_time = time.time()
+    print(f"Fitness computation time for {len(pxs)} process executions: {end_time - start_time:.4f} seconds.") # TODO REMOVE
+    # --------------- TODO TEMP END ---------------
+    
 
     return {"log_fitness": log_fitness, "no_process_executions": len(pxs)}
 
@@ -193,10 +208,20 @@ def preprocess_process_executions(
         constants.DEFAULT_EVENT_ACTIVITY,
     )
     
-    # set indices for faster lookup
-    ocel.events.set_index(event_id_key, inplace=True)
-    ocel.objects.set_index(object_id_key, inplace=True)
+    # Builds maps for faster lookup
+    event_map = dict(zip(
+        ocel.events[event_id_key], 
+        ocel.events[[event_timestamp_key, event_activity_key]].values
+    ))
     
+    object_to_type_map = dict(zip(
+        ocel.objects[object_id_key], 
+        ocel.objects[object_type_key]
+    ))
+    
+    event_to_objs_map = defaultdict(set)
+    for e_id, o_id in ocel.relations[[event_id_key, object_id_key]].values:
+        event_to_objs_map[e_id].add(o_id)
     
     pxs = []
 
@@ -205,20 +230,32 @@ def preprocess_process_executions(
         px = list(process_execution)
         
         # order by timestamp 
-        px.sort(key=lambda event_id: ocel.events.loc[event_id][event_timestamp_key])
+        px.sort(key=lambda event_id: event_map.get(event_id, (None, None))[0])
+        
         px_new = []
-        px_objects = dict()
+        px_objects = defaultdict(set)
         
         # add activity id & objects involved
         for e in px:
-            activity = ocel.events.loc[e][event_activity_key]
-            objs = set(ocel.relations[ocel.relations[event_id_key] == e][object_id_key].unique())
-            obj_by_type = {}
+            event_data = event_map.get(e, None)
+            if event_data is None:
+                print(f"[WARNING] Event id {e} not found in OCEL events.")
+                continue 
+                
+            activity = event_data[1]
+            objs = event_to_objs_map.get(e, set())
+
+            obj_by_type = defaultdict(list)
             for o in objs:
-                obj_type = ocel.objects.loc[o][object_type_key]
-                obj_by_type[obj_type] = obj_by_type.get(obj_type, []) + [o]
-            for ot in obj_by_type:
-                px_objects[ot] = px_objects.get(ot, set()).union(set(obj_by_type[ot]))
+                obj_type = object_to_type_map.get(o)
+                if obj_type: 
+                    obj_by_type[obj_type].append(o)
+                else:
+                    print(f"[WARNING] Object id {o} not found in OCEL objects.")
+
+            for ot, o_list in obj_by_type.items():
+                px_objects[ot].update(o_list)
+
             px_new.append(
                 (activity, frozenset((k, frozenset(v)) for k, v in obj_by_type.items()))
             )
@@ -232,10 +269,6 @@ def preprocess_process_executions(
                 end_events.append((f"END_{ot}", frozenset({(ot, frozenset({o}))})))
 
         pxs.append(start_events + px_new + end_events)
-
-    # reset indices
-    ocel.events.reset_index(inplace=True)
-    ocel.objects.reset_index(inplace=True)
 
     return pxs
 
