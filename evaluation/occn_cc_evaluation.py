@@ -3,7 +3,7 @@ import pm4py
 import pandas as pd
 from typing import Any, Dict, List
 from datetime import datetime
-from container_logistics_occn import occn_container_logistics
+from container_logistics_occn import occn_container_logistics, occn_container_logistics_small
 from pm4py.algo.occn_evaluation.replay_fitness import algorithm as occn_replay_fitness
 from p2p_occn import occn_p2p
 from pm4py.objects.ocel import constants
@@ -12,6 +12,10 @@ from pm4py.objects.ocel.util import process_executions
 
 
 def ocel_on_occn_eval(occn, ocel, ocel_name):
+    # Pre-filter OCEL for px extaction
+    ocel = pm4py.filter_ocel_object_types_allowed_activities(
+        ocel, activities_for_px_extraction(ocel_name)
+    )
     # Derive process executions
     px_results = process_executions.apply(ocel, variant="connected_components")
     pxs = px_results["process_executions"]
@@ -42,6 +46,20 @@ def ocel_on_occn_eval(occn, ocel, ocel_name):
     _log_results(eval_results, ocel_name)
 
 def activities_in_occn(ocel_name):
+    """
+    Activities per object type present in the respective OCCN.
+    
+    Parameters
+    ----------------
+    ocel_name
+        Name of the OCEL
+    
+    Returns
+    -----------------
+    activity_dict
+        Dictionary of object types to present activities, e.g.,
+        {"order": ["Create Order"], "element": ["Create Order", "Create Delivery"]}
+    """
     if ocel_name == "ContainerLogistics.json":
         return {
             "Customer Order": ["Register Customer Order", "Create Transport Document"],
@@ -60,6 +78,18 @@ def activities_in_occn(ocel_name):
                 "Pick Up Empty Container",
                 "Load Truck",
                 "Depart",
+            ],
+        }
+    elif ocel_name == "ContainerLogistics.json-small":
+        return {
+            "Handling Unit": [
+                "Collect Goods",
+                "Load Truck",
+            ],
+            "Container": [
+                "Order Empty Containers",
+                "Pick Up Empty Container",
+                "Load Truck",
             ],
         }
     elif ocel_name == "ocel2-p2p.json":
@@ -101,6 +131,71 @@ def activities_in_occn(ocel_name):
                 "Execute Payment",
             ],
         }
+    else:
+        raise ValueError(f"Unknown OCEL name: {ocel_name}")
+    
+def activities_for_px_extraction(ocel_name):
+    """
+    Activities per object type to be used for process execution extraction.
+    
+    Parameters
+    ----------------
+    ocel_name
+        Name of the OCEL
+    
+    Returns
+    -----------------
+    activity_dict
+        Dictionary of object types to allowed activities, e.g.,
+        {"order": ["Create Order"], "element": ["Create Order", "Create Delivery"]}
+    """
+    if ocel_name == "ContainerLogistics.json":
+        return {
+            "Customer Order": ["Register Customer Order", "Create Transport Document"],
+            "Transport Document": [
+                "Create Transport Document",
+                "Book Vehicles",
+                "Order Empty Containers",
+                "Depart",
+                "Reschedule Container"
+            ],
+            "Handling Unit": [
+                "Collect Goods",
+                "Load Truck",
+            ],
+            "Container": [
+                "Order Empty Containers",
+                "Pick Up Empty Container",
+                "Load Truck",
+                "Drive to Terminal",
+                "Weigh",
+                "Place in Stock",
+                "Bring to Loading Bay",
+                "Load to Vehicle",
+                "Reschedule Container",
+                "Depart",
+            ],
+        }
+    elif ocel_name == "ContainerLogistics.json-small":
+        return {
+            "Handling Unit": [
+                "Collect Goods",
+                "Load Truck",
+            ],
+            "Container": [
+                "Order Empty Containers",
+                "Pick Up Empty Container",
+                "Load Truck",
+                "Drive to Terminal",
+                "Weigh",
+                "Place in Stock",
+                "Bring to Loading Bay",
+                "Load to Vehicle",
+                "Reschedule Container",
+            ],
+        }
+    elif ocel_name == "ocel2-p2p.json":
+        return activities_in_occn(ocel_name)
     else:
         raise ValueError(f"Unknown OCEL name: {ocel_name}")
 
@@ -165,8 +260,8 @@ def _log_results(eval_results: Dict[str, Any], ocel_name: str, directory_path="e
     ----------------
     eval_results
         Evaluation results dictionary, expected to contain:
-        - "time_per_event_count": List of (no_events, time) tuples
-        - "time_per_object_count": List of (no_objects, time) tuples
+        - "time_per_event_count": List of (no_events, time, call_count, fitting) tuples
+        - "time_per_object_count": List of (no_objects, time, call_count, fitting) tuples
     ocel_name
         Name of the OCEL
     directory_path
@@ -183,7 +278,7 @@ def _log_results(eval_results: Dict[str, Any], ocel_name: str, directory_path="e
     
     if time_per_event_count:
         try:
-            event_df = pd.DataFrame(time_per_event_count, columns=["no_events", "time"])
+            event_df = pd.DataFrame(time_per_event_count, columns=["no_events", "time", "call_count", "fitting"])
             
             event_filename = f"{now_str}_{ocel_name}_event.csv"
             event_filepath = os.path.join(directory_path, event_filename)
@@ -201,7 +296,7 @@ def _log_results(eval_results: Dict[str, Any], ocel_name: str, directory_path="e
     
     if time_per_object_count:
         try:
-            object_df = pd.DataFrame(time_per_object_count, columns=["no_objects", "time"])
+            object_df = pd.DataFrame(time_per_object_count, columns=["no_objects", "time", "call_count", "fitting"])
             
             object_filename = f"{now_str}_{ocel_name}_object.csv"
             object_filepath = os.path.join(directory_path, object_filename)
@@ -217,16 +312,20 @@ def _log_results(eval_results: Dict[str, Any], ocel_name: str, directory_path="e
 
 
 if __name__ == "__main__":
-    ocel_name = "ocel2-p2p.json"
+    ocel_name = "ContainerLogistics.json-small"
     # occn
     if ocel_name == "ContainerLogistics.json":
         occn = occn_container_logistics()
+    elif ocel_name == "ContainerLogistics.json-small":
+        occn = occn_container_logistics_small()
     elif ocel_name == "ocel2-p2p.json":
         occn = occn_p2p()
     else:
-        raise ValueError(f"Unknown OCEL name: {ocel_name}")
+        raise ValueError(f"Unknown OCEL name: {ocel_name}") 
     # ocel
     ocel_path = os.path.join("evaluation", "event_logs", ocel_name)
+    if ocel_name == "ContainerLogistics.json-small":
+        ocel_path = os.path.join("evaluation", "event_logs", "ContainerLogistics.json")
     ocel = pm4py.read_ocel2(ocel_path)
 
     # eval

@@ -150,14 +150,17 @@ def apply(
     fitting = 0
 
     for px in pxs:
+        run_stats = {"calls": 0} # TODO REMOVE
+        fitting_px = False
         px_start_time = time.time()  # TODO REMOVE
 
         # Preprocess px
         px_processed = _preprocess_single_px(px, *lookup_maps)
 
         # Check fitting
-        if process_execution_fitting(occn, px_processed):
+        if process_execution_fitting(occn, px_processed, stats=run_stats):
             fitting += 1
+            fitting_px = True # TODO REMOVE
 
         total += 1
 
@@ -167,8 +170,9 @@ def apply(
         px_object_count = sum(
             len(objs) for _, ot_to_obj in px_processed for _, objs in ot_to_obj
         )  # TODO
-        time_per_event_count.append((px_event_count, px_time))  # TODO REMOVE
-        time_per_object_count.append((px_object_count, px_time))  # TODO REMOVE
+        call_count = run_stats["calls"]  # TODO REMOVE
+        time_per_event_count.append((px_event_count, px_time, call_count, fitting_px))  # TODO REMOVE
+        time_per_object_count.append((px_object_count, px_time, call_count, fitting_px))  # TODO REMOVE
 
     log_fitness = fitting / total if total > 0 else 0.0
 
@@ -315,7 +319,7 @@ def _build_lookup_maps(
     return (event_map, object_to_type_map, event_to_objs_map)
 
 
-def process_execution_fitting(occn: OCCausalNet, px: Collection[Tuple]) -> bool:
+def process_execution_fitting(occn: OCCausalNet, px: Collection[Tuple], stats: Optional[Dict] = None) -> bool: # TODO REMOVE stats
     """
     Check whether a process execution fits the given OCCN
 
@@ -333,12 +337,12 @@ def process_execution_fitting(occn: OCCausalNet, px: Collection[Tuple]) -> bool:
     bool
         Whether the process execution fits the OCCN
     """
-    return _is_fitting(occn, px, OCCausalNetState(), 0)
+    return _is_fitting(occn, px, OCCausalNetState(), 0, stats=stats)
 
 
 def _is_fitting(
-    occn: OCCausalNet, px: Collection[Tuple], state: OCCausalNetState, index: int
-) -> bool:
+    occn: OCCausalNet, px: Collection[Tuple], state: OCCausalNetState, index: int, stats: Optional[Dict] = None
+) -> bool: # TODO REMOVE stats
     """
     Check whether a process execution fits the given OCCN
     Assumes that events for start and end activities only produce/consume
@@ -365,6 +369,9 @@ def _is_fitting(
     if index >= len(px):
         # Success if we are in the empty state
         return not state.activities
+    
+    if stats is not None:
+        stats["calls"] += 1  # TODO REMOVE
 
     activity, obj_type_to_obj_ids = px[index]
     objects = set()
@@ -393,7 +400,7 @@ def _is_fitting(
             prod=OCCausalNetSemantics.convert_binding_tuple_to_dict(binding[2]),
             state=state,
         )
-        if _is_fitting(occn, px, new_state, index + 1):
+        if _is_fitting(occn, px, new_state, index + 1, stats=stats): # TODO REMOVE stats
             return True
 
     return False
