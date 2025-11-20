@@ -28,6 +28,7 @@ from pm4py.objects.ocel import constants
 from pm4py.objects.ocel.obj import OCEL
 from pm4py.objects.oc_causal_net.obj import OCCausalNet
 from pm4py.objects.oc_causal_net.semantics import OCCausalNetState, OCCausalNetSemantics
+from pm4py.objects.ocel.util import process_executions as px_extraction
 import time
 
 
@@ -88,7 +89,7 @@ def apply(
         )
 
         # Derive process executions
-        px_results = process_executions.apply(
+        px_results = px_extraction.apply(
             ocel, variant=process_execution_extraction, parameters=parameters
         )
         pxs = px_results["process_executions"]
