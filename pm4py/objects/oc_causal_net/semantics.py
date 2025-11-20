@@ -754,7 +754,7 @@ class OCCausalNetSemantics(Generic[N]):
         Generates all possible consumed tuples for a given activity and obligations.
         """
         possible_consumed = set()
-        for img in occn.input_marker_groups[act]:
+        for img in occn.input_marker_groups.get(act, []):
             img_dict = img.dict_representation
 
             # preprocess key constraints if ids are used
@@ -924,7 +924,7 @@ class OCCausalNetSemantics(Generic[N]):
             # Compute all possible produced tuples
             possible_produced_for_consumed = set()  # set to avoid duplicates
             # Compute per omg; cache to avoid recomputation
-            for omg in occn.output_marker_groups[act]:
+            for omg in occn.output_marker_groups.get(act, []):
                 produced_for_omg = cls.__generate_produced_for_omg(
                     omg,
                     consumed_objects_by_ot,
