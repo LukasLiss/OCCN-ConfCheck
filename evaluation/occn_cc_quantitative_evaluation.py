@@ -9,8 +9,6 @@ from p2p_occn import occn_p2p
 from pm4py.objects.ocel import constants
 from pm4py.objects.ocel.util import process_executions
 
-
-
 def ocel_on_occn_eval(occn, ocel, ocel_name):
     # Pre-filter OCEL for px extaction
     ocel = pm4py.filter_ocel_object_types_allowed_activities(
