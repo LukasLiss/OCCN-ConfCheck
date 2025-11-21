@@ -1,4 +1,4 @@
-"""
+'''
     PM4Py – A Process Mining Library for Python
 Copyright (C) 2024 Process Intelligence Solutions UG (haftungsbeschränkt)
 
@@ -18,6 +18,5 @@ visit <https://www.gnu.org/licenses/>.
 
 Website: https://processintelligence.solutions
 Contact: info@processintelligence.solutions
-"""
-
-from pm4py.objects.petri_net.exporter.variants import pnml
+'''
+from pm4py.objects.ocpn.exporter import variants, exporter

@@ -3,6 +3,7 @@ from typing import Set
 import pm4py
 from pm4py.objects.ocpn import factory as ocpn_factory
 from pm4py.algo.occn_evaluation.replay_fitness import algorithm as occn_fitness
+from pm4py.objects.ocpn.exporter import exporter as ocpn_exporter
 from discover_occn import discover_occn_from_ocel
 
 
@@ -24,6 +25,14 @@ def read_top_variants(file_path) -> Set[str]:
         event_ids = {line.strip() for line in f.readlines()}
     return event_ids
 
+def dump_ocpn(ocpn, file_name, directory):
+    """
+    Serializes the given OCPN object to a JSON file in the specified directory.
+    """
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+    file_path = os.path.join(directory, file_name)
+    ocpn_exporter.apply(ocpn, file_path, variant=ocpn_exporter.Variants.JSON_BRIDGE)
 
 if __name__ == "__main__":
     # Read OCEL
@@ -31,9 +40,10 @@ if __name__ == "__main__":
     ocel_path = os.path.join("evaluation", "event_logs", ocel_name)
     ocel = pm4py.read_ocel2(ocel_path)
 
+    x = 2
     # Read top variants
     top_variants_file = os.path.join(
-        "evaluation", "assets", "ocel2-p2p", f"ocel2-p2p_top_2_variants_event_ids.txt"
+        "evaluation", "assets", "ocel2-p2p", f"ocel2-p2p_top_{x}_variants_event_ids.txt"
     )
     top_event_ids = read_top_variants(top_variants_file)
 
@@ -55,6 +65,9 @@ if __name__ == "__main__":
 
     # Transform to OCPN object
     ocpn = ocpn_factory.create(ocpn)
+    
+    # Serialize OCPN to JSON file
+    dump_ocpn(ocpn, f"{os.path.basename(ocel_path)}_ocpn_top_{x}_variants.json", "evaluation/discovered_ocpns/serialized")
     
     # Mine OCCN with 0 threshold
     occn = discover_occn_from_ocel(ocel_filtered, ocel_name, 0)

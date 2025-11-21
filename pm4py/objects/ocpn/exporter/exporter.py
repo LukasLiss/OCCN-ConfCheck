@@ -1,4 +1,4 @@
-"""
+'''
     PM4Py – A Process Mining Library for Python
 Copyright (C) 2024 Process Intelligence Solutions UG (haftungsbeschränkt)
 
@@ -18,6 +18,34 @@ visit <https://www.gnu.org/licenses/>.
 
 Website: https://processintelligence.solutions
 Contact: info@processintelligence.solutions
-"""
+'''
+from enum import Enum
 
-from pm4py.objects.petri_net.exporter.variants import pnml
+from pm4py.objects.ocpn.exporter.variants import json_bridge
+from pm4py.util import exec_utils
+
+
+class Variants(Enum):
+    JSON_BRIDGE = json_bridge
+
+
+DEFAULT_VARIANT = Variants.JSON_BRIDGE
+
+
+def apply(ocpn, output_filename, variant=DEFAULT_VARIANT, parameters=None):
+    """
+    Export an OCPN to an output file
+
+    Parameters
+    ------------
+    ocpn
+        OCPN
+    output_filename
+        Output filename
+    variant
+        Variant of the algorithm, possible values:
+            - Variants.JSON_BRIDGE
+    parameters
+        Parameters of the exporter
+    """
+    return exec_utils.get_variant(variant).apply(ocpn, output_filename, parameters=parameters)
