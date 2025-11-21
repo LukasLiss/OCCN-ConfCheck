@@ -145,4 +145,5 @@ evaluation/converted_ocpns
 evaluation/discovered_occns
 evaluation/occn_visualization
 
-evaluation/occn_cc_evaluation_results/data
+evaluation/occn_cc_qualitative_evaluation_results/data
+evaluation/occn_cc_quantitative_evaluation_results/data
