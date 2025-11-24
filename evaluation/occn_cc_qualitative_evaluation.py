@@ -26,6 +26,7 @@ def read_top_variants(file_path) -> Set[str]:
         event_ids = {line.strip() for line in f.readlines()}
     return event_ids
 
+
 def dump_ocpn(ocpn, file_name, directory):
     """
     Serializes the given OCPN object to a JSON file in the specified directory.
@@ -34,11 +35,12 @@ def dump_ocpn(ocpn, file_name, directory):
         os.makedirs(directory)
     file_path = os.path.join(directory, file_name)
     ocpn_exporter.apply(ocpn, file_path, variant=ocpn_exporter.Variants.JSON_BRIDGE)
-    
+
+
 def create_occn_output_file(directory_path, cols, ocel_name):
     """
     Creates an output file for OCCN fitness results in the specified directory.
-    
+
     Parameters
     ----------
     directory_path : str
@@ -46,8 +48,8 @@ def create_occn_output_file(directory_path, cols, ocel_name):
     cols : List[str]
         List of column names for the output file.
     ocel_name : str
-        Name of the OCEL file used for naming the output file.  
-    
+        Name of the OCEL file used for naming the output file.
+
     Returns
     -------
     str
@@ -56,15 +58,18 @@ def create_occn_output_file(directory_path, cols, ocel_name):
     if not os.path.exists(directory_path):
         os.makedirs(directory_path)
     now_str = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    output_file_path = os.path.join(directory_path, f"{now_str}_{ocel_name}_occn_fitness_results.csv")
+    output_file_path = os.path.join(
+        directory_path, f"{now_str}_{ocel_name}_occn_fitness_results.csv"
+    )
     with open(output_file_path, "w") as f:
         f.write(",".join(cols) + "\n")
     return output_file_path
 
+
 def add_occn_results_to_file(output_file_path, results_dict, no_variants):
     """
     Appends OCCN fitness results to the specified output file.
-    
+
     Parameters
     ----------
     output_file_path : str
@@ -78,6 +83,73 @@ def add_occn_results_to_file(output_file_path, results_dict, no_variants):
         row = f"{no_variants},{results_dict['log_fitness']},{results_dict['no_process_executions']}"
         f.write(row + "\n")
 
+
+def print_ocel_variants(ocel):
+    """
+    Prints the variants of an OCEL in the form of (event-activity, [obj-ids], event-activity-2, ...)
+    for events ordered by time of the first process execution of that variant.
+
+    Parameters
+    ----------
+    ocel : OCEL
+        Object-centric event log to extract and print variants from.
+    """
+    from pm4py.objects.ocel.util import process_executions as px_extraction
+
+    # Extract process executions using connected components
+    px_results = px_extraction.apply(ocel, variant="connected_components")
+    process_executions = px_results["process_executions"]
+
+    print(f"\nFound {len(process_executions)} process executions")
+    print("=" * 80)
+
+    # Track seen variants to show only the first occurrence
+    seen_variants = set()
+    variant_count = 0
+
+    # Process each process execution
+    for px_idx, px_event_ids in enumerate(process_executions):
+        # Get events for this process execution, sorted by timestamp
+        px_events = ocel.events[
+            ocel.events[ocel.event_id_column].isin(px_event_ids)
+        ].sort_values(by=ocel.event_timestamp)
+
+        # Build variant representation: list of (activity, [object_ids])
+        variant = []
+        for _, event_row in px_events.iterrows():
+            event_id = event_row[ocel.event_id_column]
+            activity = event_row[ocel.event_activity]
+
+            # Get objects for this event from relations
+            event_objects = ocel.relations[
+                ocel.relations[ocel.event_id_column] == event_id
+            ][ocel.object_id_column].tolist()
+
+            # Sort objects for consistent comparison
+            event_objects_sorted = sorted(event_objects)
+            variant.append((activity, tuple(event_objects_sorted)))
+
+        # Convert variant to tuple for hashing
+        variant_tuple = tuple(variant)
+
+        # Only print if this is the first occurrence of this variant
+        if variant_tuple not in seen_variants:
+            seen_variants.add(variant_tuple)
+            variant_count += 1
+
+            print(f"\nVariant {variant_count} (Process Execution {px_idx + 1}):")
+            print("-" * 80)
+
+            for step_idx, (activity, objects) in enumerate(variant, 1):
+                objects_str = ", ".join(objects)
+                print(f"  {step_idx}. {activity} [{objects_str}]")
+
+    print("\n" + "=" * 80)
+    print(f"Total unique variants: {variant_count}")
+    print(f"Total process executions: {len(process_executions)}")
+    print("=" * 80)
+
+
 if __name__ == "__main__":
     # Read OCEL
     ocel_name = "ocel2-p2p.json"
@@ -85,19 +157,29 @@ if __name__ == "__main__":
     ocel = pm4py.read_ocel2(ocel_path)
 
     # Create output file for OCCN fitness results
-    out_file = create_occn_output_file(os.path.join("evaluation", "occn_cc_qualitative_evaluation_results", "data"), ["no_top_variants", "log_fitness", "no_process_executions"], ocel_name)
+    out_file = create_occn_output_file(
+        os.path.join("evaluation", "occn_cc_qualitative_evaluation_results", "data"),
+        ["no_top_variants", "log_fitness", "no_process_executions"],
+        ocel_name,
+    )
 
-    # Compuet fitness for top k variants    
-    for k in range(1, 400):
+    # Compuet fitness for top k variants
+    for k in range(3, 4):
         print(f"\nEvaluating top {k} variants...")
         # Read top variants
         top_variants_file = os.path.join(
-            "evaluation", "assets", "ocel2-p2p", f"ocel2-p2p_top_{k}_variants_event_ids.txt"
+            "evaluation",
+            "assets",
+            "ocel2-p2p",
+            f"ocel2-p2p_top_{k}_variants_event_ids.txt",
         )
         top_event_ids = read_top_variants(top_variants_file)
 
         # Filter OCEL to only include top variants
         ocel_filtered = pm4py.filter_ocel_events(ocel, top_event_ids, positive=True)
+
+        # Print variants of the filtered OCEL
+        print_ocel_variants(ocel_filtered)
 
         print("Number of events in filtered OCEL:", len(ocel_filtered.events))
         print("Number of objects in filtered OCEL:", len(ocel_filtered.objects))
@@ -114,13 +196,17 @@ if __name__ == "__main__":
 
         # Transform to OCPN object
         ocpn = ocpn_factory.create(ocpn)
-        
+
         # Serialize OCPN to JSON file
-        dump_ocpn(ocpn, f"{os.path.basename(ocel_path)}_ocpn_top_{k}_variants.json", "evaluation/discovered_ocpns/serialized")
-        
+        dump_ocpn(
+            ocpn,
+            f"{os.path.basename(ocel_path)}_ocpn_top_{k}_variants.json",
+            "evaluation/discovered_ocpns/serialized",
+        )
+
         # Mine OCCN with 0 threshold
         occn = discover_occn_from_ocel(ocel_filtered, ocel_name, 0)
-        
+
         # Compute OCCN fitness
         occn_results = occn_fitness.apply(occn, ocel)
         print("OCCN Fitness Results:")
@@ -128,4 +214,3 @@ if __name__ == "__main__":
         print(f"no_process_executions: {occn_results['no_process_executions']}")
         # Append results to output file
         add_occn_results_to_file(out_file, occn_results, k)
-    
