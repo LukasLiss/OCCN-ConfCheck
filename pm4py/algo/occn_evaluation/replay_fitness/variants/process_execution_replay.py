@@ -169,10 +169,9 @@ def apply(
 
         px_end_time = time.time()  # TODO REMOVE
         px_time = px_end_time - px_start_time  # TODO REMOVE
-        px_event_count = len(px)  # TODO REMOVE
-        px_object_count = sum(
-            len(objs) for _, ot_to_obj in px_processed for _, objs in ot_to_obj
-        )  # TODO
+        px_event_count = len(px) # Do not count START/End events  # TODO REMOVE
+        px_object_count = len(set([x for _, ot_to_obj in px_processed for _, objs in ot_to_obj for x in objs]))
+         # TODO
         call_count = run_stats["calls"]  # TODO REMOVE
         time_per_event_count.append((px_event_count, px_time, call_count, fitting_px))  # TODO REMOVE
         time_per_object_count.append((px_object_count, px_time, call_count, fitting_px))  # TODO REMOVE
