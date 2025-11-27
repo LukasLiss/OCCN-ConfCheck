@@ -14,7 +14,23 @@ def discover_occn():
     # Restrict to these object types
     #object_types = ["Customer Order", "Transport Document", "Container", "Handling Unit"]
 
-    discover_occn_fhm(event_log, event_log_for_miner, object_types, 0.5, file_name, True)
+    viz = True
+    if os.path.exists("evaluation/occn_visualization/src") is False:
+        viz = False
+        print("evaluation/occn_visualization/src does not exist. Please copy the contents of the visualization directory from https://github.com/LukasLiss/OCCN-Miner into evaluation/occn_visualization. OCCN will not be visualized")
+    discover_occn_fhm(event_log, event_log_for_miner, object_types, 0.5, file_name, viz)
+    
+def discover_occn_from_ocel(ocel, ocel_name, relativeOccurenceThreshold):
+    object_types = ocel.objects[ocel.object_type_column].unique().tolist()
+    event_log, event_log_for_miner = _prepare_ocel_for_discovery(ocel)
+    
+    viz = True
+    if os.path.exists("evaluation/occn_visualization/src") is False:
+        viz = False
+        print("evaluation/occn_visualization/src does not exist. Please copy the contents of the visualization directory from https://github.com/LukasLiss/OCCN-Miner into evaluation/occn_visualization. OCCN will not be visualized")
+    occn = discover_occn_fhm(event_log, event_log_for_miner, object_types, relativeOccurenceThreshold, ocel_name, viz)
+    
+    return occn
 
 
 def discover_ocel(ocel_name):

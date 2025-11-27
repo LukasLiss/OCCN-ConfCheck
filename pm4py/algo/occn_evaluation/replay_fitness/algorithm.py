@@ -23,14 +23,13 @@ Contact: info@processintelligence.solutions
 from pm4py.algo.occn_evaluation.replay_fitness.variants import process_execution_replay
 from pm4py.util import exec_utils
 from enum import Enum
-from typing import Optional, Dict, Any
-from pm4py.objects.ocel.obj import OCEL  
+from typing import Collection, Optional, Dict, Any
+from pm4py.objects.ocel.obj import OCEL
 from pm4py.objects.oc_causal_net.obj import OCCausalNet
 
 
 class Variants(Enum):
     PROCESS_EXECUTION_REPLAY = process_execution_replay
-
 
 
 PROCESS_EXECUTION_REPLAY = Variants.PROCESS_EXECUTION_REPLAY
@@ -44,6 +43,7 @@ def apply(
     ocel: OCEL,
     parameters: Optional[Dict[Any, Any]] = None,
     variant=DEFAULT_VARIANT,
+    process_executions: Optional[Collection] = None,
 ) -> Dict[str, Any]:
     """
     Apply fitness evaluation starting from an event log and an object-centric causal net,
@@ -60,6 +60,8 @@ def apply(
     variant
         Chosen variant:
             - Variants.PROCESS_EXECUTION_REPLAY
+    process_executions
+        Precomputed process executions. If None, process executions will be derived from the OCEL.
 
     Returns
     ----------
@@ -71,4 +73,9 @@ def apply(
     if parameters is None:
         parameters = {}
 
-    return exec_utils.get_variant(variant).apply(occn=occn, ocel=ocel, parameters=parameters)
+    return exec_utils.get_variant(variant).apply(
+        occn=occn,
+        ocel=ocel,
+        process_executions=process_executions,
+        parameters=parameters,
+    )

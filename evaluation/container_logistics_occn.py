@@ -137,3 +137,82 @@ def occn_container_logistics():
 
     occn = create_oc_causal_net(marker_groups)
     return occn
+
+def occn_container_logistics_small():
+    marker_groups = {
+        "START_Container": {
+            "omg": [
+                [("Order Empty Containers", "Container", (1, 1), 0)],
+            ],
+        },
+        # 1 transport document for >= 1 container(s)
+        "Order Empty Containers": {
+            "img": [
+                [
+                    ("START_Container", "Container", (1, -1), 0),
+                ],
+            ],
+            "omg": [
+                [
+                    ("Pick Up Empty Container", "Container", (1, -1), 0),
+                ],
+            ],
+        },
+        "Pick Up Empty Container": {
+            "img": [
+                [("Order Empty Containers", "Container", (1, 1), 0)],
+            ],
+            "omg": [
+                [("Load Truck", "Container", (1, 1), 0)],
+            ],
+        },
+        "START_Handling Unit": {
+            "omg": [
+                [("Collect Goods", "Handling Unit", (1, 1), 0)],
+            ],
+        },
+        "Collect Goods": {
+            "img": [
+                [("START_Handling Unit", "Handling Unit", (1, 1), 0)],
+            ],
+            "omg": [
+                [("Load Truck", "Handling Unit", (1, 1), 0)],
+            ],
+        },
+        # = 1 Handling Unit per Container
+        "Load Truck": {
+            "img": [
+                [
+                    ("Collect Goods", "Handling Unit", (1, 1), 0),
+                    ("Pick Up Empty Container", "Container", (1, 1), 0),
+                ],
+                [
+                    ("Collect Goods", "Handling Unit", (1, 1), 0),
+                    ("Load Truck", "Container", (1, 1), 0),
+                ],
+            ],
+            "omg": [
+                [
+                    ("END_Handling Unit", "Handling Unit", (1, 1), 0),
+                    ("END_Container", "Container", (1, 1), 0),
+                ],
+                [
+                    ("END_Handling Unit", "Handling Unit", (1, 1), 0),
+                    ("Load Truck", "Container", (1, 1), 0),
+                ],
+            ],
+        },
+        "END_Handling Unit": {
+            "img": [
+                [("Load Truck", "Handling Unit", (1, 1), 0)],
+            ],
+        },
+        "END_Container": {
+            "img": [
+                [("Load Truck", "Container", (1, 1), 0)],
+            ],
+        },
+    }
+
+    occn = create_oc_causal_net(marker_groups)
+    return occn
