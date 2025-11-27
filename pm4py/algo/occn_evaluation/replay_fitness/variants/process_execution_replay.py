@@ -96,11 +96,9 @@ def apply(
         )
         pxs = px_results["process_executions"]
 
-    # --------------- TODO TEMP START ---------------
     start_time = time.time()
-    # --------------- TODO TEMP END ---------------
 
-    print("Building lookup maps for preprocessing...")  # TODO REMOVE
+    print("Building lookup maps for preprocessing...")
     start_setup_time = time.time()
 
     lookup_maps = _build_lookup_maps(ocel, parameters)
@@ -108,54 +106,25 @@ def apply(
     end_setup_time = time.time()
     print(
         f"Lookup maps built in: {end_setup_time - start_setup_time:.4f} seconds."
-    )  # TODO REMOVE
+    ) 
 
-    # --------------- TODO TEMP START ---------------
     end_time = time.time()
     print(
         f"Pre-build lookup maps time for {len(pxs)} process executions: {end_time - start_time:.4f} seconds."
-    )  # TODO REMOVE
-    # max_len = max(len(px) for px in pxs_processed)
-    # print(f"Max len: {max_len} among process executions.") # TODO REMOVE
-    # if max_len > 1000:
-    #    for i, px in enumerate(pxs_processed):# TODO REMOVE
-    #        print(f"Process execution {i} has {len(px)} events.") # TODO REMOVE
-    # px = pxs_processed[1]
-    # obj_counts = {}
-    # obj_counts_per_type = {}
-    # unique_objs_per_type = {}
-    # act_count = {}
-    # for activity, obj_type_to_obj_ids in px:
-    #    act_count[activity] = act_count.get(activity, 0) + 1
-    #    for obj_type, obj_ids in obj_type_to_obj_ids:
-    #        for obj in obj_ids:
-    #            obj_counts[obj] = obj_counts.get(obj, 0) + 1
-    #            obj_counts_per_type[obj_type] = obj_counts_per_type.get(obj_type, 0) + 1
-    #            unique_objs_per_type[obj_type] = unique_objs_per_type.get(obj_type, set()).union({obj})
-    # unique_obj_counts = {}
-    # for obj_type in unique_objs_per_type:
-    #    unique_obj_counts[obj_type] = len(unique_objs_per_type[obj_type])
-    # print(f"Activity counts in process execution 1: {act_count}")
-    # print(f"Object occurrences in process execution 1: {obj_counts}")
-    # max_obj = max(obj_counts, key=lambda k: obj_counts[k])
-    # print(f"Most frequent object in process execution 1: {max_obj} with {obj_counts[max_obj]} occurrences")
-    # print(f"Object occurences per type in process execution 1: {obj_counts_per_type}")
-    # print(f"Unique objects per type in process execution 1: {unique_obj_counts}")
-    # print(f"Total unique objects in process execution 1: {sum(unique_obj_counts.values())}")
+    )  
     print(f"Starting fitness computation for {len(pxs)} process executions...")
     start_time = time.time()
     time_per_event_count = []
     time_per_object_count = []
-    # --------------- TODO TEMP END ---------------
 
     # Compute fitness
     total = 0
     fitting = 0
 
     for px in tqdm(pxs, desc="replay, completed px ::"):
-        run_stats = {"calls": 0} # TODO REMOVE
+        run_stats = {"calls": 0} 
         fitting_px = False
-        px_start_time = time.time()  # TODO REMOVE
+        px_start_time = time.time()
 
         # Preprocess px
         px_processed = _preprocess_single_px(px, *lookup_maps)
@@ -163,33 +132,30 @@ def apply(
         # Check fitting
         if process_execution_fitting(occn, px_processed, stats=run_stats):
             fitting += 1
-            fitting_px = True # TODO REMOVE
+            fitting_px = True
 
         total += 1
 
-        px_end_time = time.time()  # TODO REMOVE
-        px_time = px_end_time - px_start_time  # TODO REMOVE
-        px_event_count = len(px) # Do not count START/End events  # TODO REMOVE
+        px_end_time = time.time()
+        px_time = px_end_time - px_start_time 
+        px_event_count = len(px) # Do not count START/End events
         px_object_count = len(set([x for _, ot_to_obj in px_processed for _, objs in ot_to_obj for x in objs]))
-         # TODO
-        call_count = run_stats["calls"]  # TODO REMOVE
-        time_per_event_count.append((px_event_count, px_time, call_count, fitting_px))  # TODO REMOVE
-        time_per_object_count.append((px_object_count, px_time, call_count, fitting_px))  # TODO REMOVE
+        call_count = run_stats["calls"]
+        time_per_event_count.append((px_event_count, px_time, call_count, fitting_px))
+        time_per_object_count.append((px_object_count, px_time, call_count, fitting_px))
 
     log_fitness = fitting / total if total > 0 else 0.0
 
-    # --------------- TODO START END ---------------
     end_time = time.time()
     print(
         f"Fitness computation time for {len(pxs)} process executions: {end_time - start_time:.4f} seconds."
-    )  # TODO REMOVE
-    # --------------- TODO TEMP END ---------------
+    )  
 
     return {
         "log_fitness": log_fitness,
         "no_process_executions": len(pxs),
-        "time_per_event_count": time_per_event_count, # TODO REMOVE
-        "time_per_object_count": time_per_object_count, # TODO REMOVE
+        "time_per_event_count": time_per_event_count,
+        "time_per_object_count": time_per_object_count, 
     }
 
 
@@ -321,7 +287,7 @@ def _build_lookup_maps(
     return (event_map, object_to_type_map, event_to_objs_map)
 
 
-def process_execution_fitting(occn: OCCausalNet, px: Collection[Tuple], stats: Optional[Dict] = None) -> bool: # TODO REMOVE stats
+def process_execution_fitting(occn: OCCausalNet, px: Collection[Tuple], stats: Optional[Dict] = None) -> bool:
     """
     Check whether a process execution fits the given OCCN
 
@@ -344,7 +310,7 @@ def process_execution_fitting(occn: OCCausalNet, px: Collection[Tuple], stats: O
 
 def _is_fitting(
     occn: OCCausalNet, px: Collection[Tuple], state: OCCausalNetState, index: int, stats: Optional[Dict] = None
-) -> bool: # TODO REMOVE stats
+) -> bool:
     """
     Check whether a process execution fits the given OCCN
     Assumes that events for start and end activities only produce/consume
@@ -373,7 +339,7 @@ def _is_fitting(
         return not state.activities
     
     if stats is not None:
-        stats["calls"] += 1  # TODO REMOVE
+        stats["calls"] += 1 
 
     activity, obj_type_to_obj_ids = px[index]
     objects = set()
@@ -392,7 +358,7 @@ def _is_fitting(
         )
 
     # Prune bindings based on knowledge about the rest of the px
-    # bindings = _prune_bindings(occn, px, index, bindings) TODO enable and implement
+    # bindings = _prune_bindings(occn, px, index, bindings) # For future implementation
 
     for binding in bindings:
         new_state = OCCausalNetSemantics.bind_activity(
@@ -402,7 +368,7 @@ def _is_fitting(
             prod=OCCausalNetSemantics.convert_binding_tuple_to_dict(binding[2]),
             state=state,
         )
-        if _is_fitting(occn, px, new_state, index + 1, stats=stats): # TODO REMOVE stats
+        if _is_fitting(occn, px, new_state, index + 1, stats=stats):
             return True
 
     return False
