@@ -23,6 +23,8 @@ Contact: info@processintelligence.solutions
 from collections import defaultdict
 from enum import Enum
 from typing import Any, Collection, Dict, List, Optional, Tuple
+
+from tqdm import tqdm
 from pm4py.util import exec_utils
 from pm4py.objects.ocel import constants
 from pm4py.objects.ocel.obj import OCEL
@@ -150,7 +152,7 @@ def apply(
     total = 0
     fitting = 0
 
-    for px in pxs:
+    for px in tqdm(pxs, desc="replay, completed px ::"):
         run_stats = {"calls": 0} # TODO REMOVE
         fitting_px = False
         px_start_time = time.time()  # TODO REMOVE
