@@ -9,18 +9,13 @@ The algorithm enables:
 
 This repository is a fork of the open-source process mining library [pm4py](https://github.com/process-intelligence-solutions/pm4py) and is extended with our contributions, including the conformance checking approach for object-centric causal nets.
 
-## Introduction
-
-tbd
-
-example images:
-
-<img width="1883" height="599" alt="Mined OCPN for the running example" src="https://github.com/user-attachments/assets/34959bbe-da9a-4283-8738-f2af9b9c304e" />
-<img width="2518" height="438" alt="Transformed OCCN for the running example" src="https://github.com/user-attachments/assets/efadb786-7109-44f1-ba12-c077bf76e810" />
-
 ## Evaluation
 
+The qualitative and quantitative evaluation is explained in the following.
+
 ### Quantitative Evaluation
+We used two object-centric event log, namely procure-to-pay (P2P) and container logistics and the two case-centric event logs road traffic fine log and the BPI 2017 challenge.
+The code for teh runtime evaluation can be found in the occn_cc_quantitative_evaluation.py.
 
 ### Qualitative Evaluation
 
@@ -28,7 +23,9 @@ The publicly accessible Procure-to-Pay P2P event log was used for the evaluation
 
 Our approach detected 20 deviating process executions more than the ocpn-alignment approach. This is due to the modeling capabilities of the undelying models, where occn can model things like concrete cardinalities that ocpns currently not model and thus, these deviation are also not detected.
 
-### Evaluated Datasets (OCELs)
+The code for the qualitative evaluation can be found in the occn_cc_qualitative_evaluation.py.
+
+### Evaluated Object-Centric Datasets (OCELs)
 
 The following publicly accessible dataset were used in the evaluation:
 
@@ -65,7 +62,3 @@ To set up your environment and run the code, please follow these steps:
     ```bash
     pip install rich
     ```
-
-## Usage
-
-tbd.
