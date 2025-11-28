@@ -1742,7 +1742,7 @@ def discover_occn_fhm(eventLog, eventLogForMiner, objectTypes, relativeOccurance
     if visualize:
         visualizer(
             occnet,
-            vizFilePath="evaluation/occn_visualization/",
+            vizFilePath="evaluation/occn_visualization",
         )
     
     occn = occnet.to_OCCausalNet()
@@ -1782,7 +1782,7 @@ def occn_from_dump(inputDirName, relativeOccuranceThreshold, visualize=False) ->
     if visualize:
         visualizer(
             occnet,
-            vizFilePath="evaluation/occn_visualization/",
+            vizFilePath="evaluation/occn_visualization",
         )
     
     occn = occnet.to_OCCausalNet()

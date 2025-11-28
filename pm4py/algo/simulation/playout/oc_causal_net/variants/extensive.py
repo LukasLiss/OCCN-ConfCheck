@@ -39,6 +39,7 @@ class Parameters(Enum):
     EVENT_TIMESTAMP = constants.PARAM_EVENT_TIMESTAMP
     OBJECT_ID = constants.PARAM_OBJECT_ID
     OBJECT_TYPE = constants.PARAM_OBJECT_TYPE
+    OBJECTS_UNIQUE_PER_SEQUENCE = "objects_unique_per_sequence"
     RETURN_SEQUENCES = "return_sequences"
     MAX_BINDINGS_PER_ACTIVITY = "maxBindingsPerActivity"
     OCCN_SEMANTICS = "occn_semantics"
@@ -76,6 +77,7 @@ def apply(
         Parameters of the algorithm, including:
             Parameters.MAX_BINDINGS_PER_ACTIVITY: Maximum number of bindings per activity (mandatory)
             Parameters.RETURN_SEQUENCES: If True, return an iterator to all possible sequences of bindings instead of an OCEL
+            Parameters.OBJECTS_UNIQUE_PER_SEQUENCE: If True, objects in the resulting OCEL are make unique per sequence (default: False)
             Parameters.OCCN_SEMANTICS: The semantics to be used for the causal net (default: OCCausalNetSemantics())
             Parameters.BRANCHING_FACTOR_ACTIVITIES: Maximum branching factor for exploring enabled activities (default: inf). Note that the play-out will generate a subset of all sequences if this is set.
             Parameters.BRANCHING_FACTOR_BINDINGS: Maximum branching factor for exploring enabled bindings (default: inf). Note that the play-out will generate a subset of all sequences if this is set.
@@ -284,8 +286,8 @@ def _populate_memo_graph(
             new_state = semantics.bind_activity(
                 occn,
                 act=binding[0],
-                cons=_convert_binding_tuple_to_dict(binding[1]),
-                prod=_convert_binding_tuple_to_dict(binding[2]),
+                cons=semantics.convert_binding_tuple_to_dict(binding[1]),
+                prod=semantics.convert_binding_tuple_to_dict(binding[2]),
                 state=state,
             )
             # clean up fake obligations for start activities
@@ -316,21 +318,7 @@ def _populate_memo_graph(
     return bool(next_steps)
 
 
-def _convert_binding_tuple_to_dict(binding_tuple):
-    """
-    Converts a tuple from a binding (conumed or produced) into a nested dictionary.
-    None is converted to None.
 
-    The inner values (object lists) are converted to sets.
-    """
-    if not binding_tuple:
-        return None
-    return {
-        related_act: {
-            object_type: set(objects) for object_type, objects in objects_per_type
-        }
-        for related_act, objects_per_type in binding_tuple
-    }
 
 
 def _get_enabled_activities(
@@ -573,6 +561,9 @@ def _valid_sequences_to_ocel(valid_sequences_iter, idx_to_act, idx_to_ot, parame
     event_timestamp = exec_utils.get_param_value(
         Parameters.EVENT_TIMESTAMP, parameters, constants.DEFAULT_EVENT_TIMESTAMP
     )
+    objects_unique_per_sequence = exec_utils.get_param_value(
+        Parameters.OBJECTS_UNIQUE_PER_SEQUENCE, parameters, False
+    )
     # Convert all found traces to OCEL format
 
     # Create the OCEL object
@@ -584,6 +575,9 @@ def _valid_sequences_to_ocel(valid_sequences_iter, idx_to_act, idx_to_ot, parame
     event_id_counter = 0
     # assigns to each event an increased timestamp from 1970
     curr_timestamp = 10000000
+    
+    if objects_unique_per_sequence:
+        object_id_counter = 0
 
     for sequence in valid_sequences_iter:
         # For each sequence, create events and objects
@@ -617,6 +611,9 @@ def _valid_sequences_to_ocel(valid_sequences_iter, idx_to_act, idx_to_ot, parame
                 for ot_id, objects in ot_to_obj:
                     obj_type = idx_to_ot[ot_id]
                     for obj_id in objects:
+                        if objects_unique_per_sequence:
+                            obj_id = f"{obj_id}_{object_id_counter}"
+                        
                         # Add object
                         if obj_id not in all_objects_seen:
                             all_objects_seen.add(obj_id)
@@ -636,6 +633,8 @@ def _valid_sequences_to_ocel(valid_sequences_iter, idx_to_act, idx_to_ot, parame
                                 object_type_column: obj_type,
                             }
                         )
+        if objects_unique_per_sequence:
+            object_id_counter += 1
 
     # Convert to dataframes
     events_df = pd.DataFrame(events_list)

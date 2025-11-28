@@ -9,8 +9,8 @@ class OCCausalNetSimulationTest(unittest.TestCase):
         occn = occn_ABC()
         
         parameters = {
-            "maxBindingsPerActivity": 3,
-            "return_sequences": True,
+            playout_extensive.Parameters.MAX_BINDINGS_PER_ACTIVITY: 3,
+            playout_extensive.Parameters.RETURN_SEQUENCES: True,
         }
         
         objects = {
@@ -38,8 +38,8 @@ class OCCausalNetSimulationTest(unittest.TestCase):
         occn = occn_ABC()
         
         parameters = {
-            "maxBindingsPerActivity": 3,
-            "return_sequences": True,
+            playout_extensive.Parameters.MAX_BINDINGS_PER_ACTIVITY: 3,
+            playout_extensive.Parameters.RETURN_SEQUENCES: True,
         }
         objects = {
             "order": {"o1", "o2"}
@@ -49,10 +49,10 @@ class OCCausalNetSimulationTest(unittest.TestCase):
         self.assertEqual(len(valid_sequences), 252)
         
         parameters = {
-            "maxBindingsPerActivity": 3,
-            "return_sequences": True,
-            "branching_factor_activities": 1.5,
-            "branching_factor_bindings": 1.5
+            playout_extensive.Parameters.MAX_BINDINGS_PER_ACTIVITY: 3,
+            playout_extensive.Parameters.RETURN_SEQUENCES: True,
+            playout_extensive.Parameters.BRANCHING_FACTOR_ACTIVITIES: 1.5,
+            playout_extensive.Parameters.BRANCHING_FACTOR_BINDINGS: 1.5,
         }
         for _ in range (10):
             valid_sequences_iter_sub, _, _ = playout_extensive.apply(occn, objects, parameters)
