@@ -11,7 +11,7 @@ This repository is a fork of the open-source process mining library [pm4py](http
 
 ## Introduction
 
-tbd
+The algorithm searches through the state space of the object-centric causal net to check whether the given set of object centric events is accecpted by the model or not.
 
 example images:
 
@@ -19,8 +19,9 @@ example images:
 <img width="2518" height="438" alt="Transformed OCCN for the running example" src="https://github.com/user-attachments/assets/efadb786-7109-44f1-ba12-c077bf76e810" />
 
 ## Evaluation
-
+We performed a  quantitative and qualitative evaluation.
 ### Quantitative Evaluation
+We performed a runtime analysis on four publicly accessible event logs.
 
 ### Qualitative Evaluation
 
@@ -65,7 +66,3 @@ To set up your environment and run the code, please follow these steps:
     ```bash
     pip install rich
     ```
-
-## Usage
-
-tbd.
